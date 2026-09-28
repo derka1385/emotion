@@ -1,0 +1,1396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eigengrau</title>
+<meta name="description" content="One blink, slowed down.">
+<meta name="theme-color" content="#16161d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..600;1,8..60,200..600&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --eigengrau: #16161d;
+  --ink: #b9b3a9;
+  --serif: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+html { background: var(--eigengrau); scrollbar-width: none; overflow: hidden; }
+html.in { overflow-y: auto; }
+html::-webkit-scrollbar { display: none; }
+body { margin: 0; background: var(--eigengrau); color: var(--ink); font-family: var(--serif); -webkit-font-smoothing: antialiased; font-optical-sizing: auto; }
+#track { height: 3200vh; }
+#gl, #lid { position: fixed; left: 0; top: 0; width: 100%; height: 100lvh; display: block; pointer-events: none; }
+#lid { z-index: 2; opacity: 0; }
+#vig { position: fixed; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(130% 110% at 50% 45%, transparent 55%, rgba(0, 0, 0, .3) 100%); }
+#grain {
+  position: fixed; inset: -60%; z-index: 4; pointer-events: none; opacity: .055; mix-blend-mode: overlay;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain .7s steps(6) infinite;
+}
+@keyframes grain { 0% { transform: translate(0, 0) } 20% { transform: translate(-4%, 3%) } 40% { transform: translate(3%, -5%) } 60% { transform: translate(-6%, -2%) } 80% { transform: translate(5%, 4%) } 100% { transform: translate(0, 0) } }
+
+.cap { font: 400 10px/1.6 var(--serif); letter-spacing: .26em; text-transform: uppercase; font-variant-numeric: tabular-nums lining-nums; }
+
+/* the threshold: eyes still closed */
+#gate { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 24px 17vh; text-align: center; color: #cdc7bd; transition: opacity 1.8s cubic-bezier(.4, 0, .2, 1); }
+#gate.gone { opacity: 0; pointer-events: none; }
+#gate h1 { margin: 0; font: 300 clamp(30px, 3.2vw, 44px)/1 var(--serif); letter-spacing: .015em; }
+#gate .sub { margin: 16px 0 0; opacity: .6; }
+#gate .choice { margin-top: 46px; display: flex; gap: 30px; justify-content: center; align-items: baseline; flex-wrap: wrap; }
+#gate button { position: relative; padding: 8px 2px; border: 0; background: none; color: inherit; font: 400 17px/1.3 var(--serif); letter-spacing: .01em; cursor: pointer; }
+#gate button::after { content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 1px; background: currentColor; opacity: .55; transform: scaleX(.16); transition: transform 1s cubic-bezier(.2, .7, .2, 1); }
+#gate button:hover::after, #gate button:focus-visible::after { transform: scaleX(1); }
+#gate button:focus-visible { outline: none; }
+#gate #silent { font-style: italic; opacity: .55; }
+#gate .note { margin: 28px 0 0; opacity: .4; }
+
+/* the frame around the piece */
+.hud { position: fixed; z-index: 6; color: var(--ink); opacity: 0; transition: opacity 2.6s, color 1.4s; }
+html.in .hud { opacity: var(--hud, 1); }
+#mark { left: max(22px, 3vw); top: max(20px, 3vh); display: flex; align-items: baseline; gap: 16px; }
+#mark .t { font: 400 16px/1 var(--serif); letter-spacing: .05em; }
+#mark .cap { opacity: .6; }
+#clock { left: max(22px, 3vw); bottom: max(20px, 3vh); display: flex; gap: 18px; }
+#clock span:last-child { opacity: .6; }
+#snd { right: max(14px, 3vw); top: max(12px, 3vh); display: flex; align-items: center; gap: 12px; padding: 8px; margin: -8px; border: 0; background: none; cursor: pointer; }
+#snd .wave { display: flex; gap: 2px; align-items: center; height: 11px; }
+#snd .wave i { width: 1px; height: 100%; background: currentColor; transform: scaleY(.22); }
+#snd[aria-pressed="true"] .wave i { animation: wave 1.8s ease-in-out infinite; }
+#snd[aria-pressed="true"] .wave i:nth-child(2) { animation-delay: -.6s; }
+#snd[aria-pressed="true"] .wave i:nth-child(3) { animation-delay: -1.2s; }
+@keyframes wave { 0%, 100% { transform: scaleY(.22) } 50% { transform: scaleY(1) } }
+#snd:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
+#rail { right: max(14px, 3vw); top: 24vh; bottom: 24vh; width: 1px; }
+#rail::before { content: ""; position: absolute; inset: 0; background: currentColor; opacity: .16; }
+#rail i { position: absolute; left: -1px; width: 3px; height: 30px; margin-top: -15px; background: currentColor; opacity: .7; top: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 700px) { #mark .cap, #rail { display: none; } }
+@media (prefers-reduced-motion: reduce) { #grain { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+<canvas id="lid" aria-hidden="true"></canvas>
+<div id="vig"></div>
+<div id="grain"></div>
+
+<section id="gate" aria-label="Eigengrau">
+  <h1>Eigengrau</h1>
+  <p class="sub cap">one blink, slowed down</p>
+  <div class="choice">
+    <button id="loud" type="button">Enter with sound</button>
+    <button id="silent" type="button">or in silence</button>
+  </div>
+  <p class="note cap">headphones · scroll slowly</p>
+</section>
+
+<header class="hud" id="mark"><span class="t">Eigengrau</span><span class="cap">one blink, slowed down</span></header>
+<button class="hud cap" id="snd" type="button" aria-pressed="false"><span class="wave" aria-hidden="true"><i></i><i></i><i></i></span><span id="snd-t">sound off</span></button>
+<div class="hud cap" id="clock" aria-hidden="true"><span id="tc">0.0000 s</span><span id="ph">open</span></div>
+<div class="hud" id="rail" aria-hidden="true"><i></i></div>
+
+<main id="track">
+  <article class="sr">
+    <p>A sunlit room. On the wall: Stay with the light for a moment. In the dust of the sunbeam: in a moment, you will blink. The lids close: the world goes out.</p>
+    <p>It is not dark behind your eyelids. It is red. Further in, even the red goes out: eigengrau, German for intrinsic grey, the colour the eye sees in perfect darkness. But something stays: the last thing you saw, burned in.</p>
+    <p>Behind the eyes, soft lights appear. Here, the light is yours. Someone’s face. A room you have never been in. Something you almost remember. The light builds until it is everything, then goes out.</p>
+    <p>The mind rebuilds the room from memory. Not the room. A copy. The window was not here. It had four legs. Most of it, you will not keep.</p>
+    <p>About four hundred million blinks in a life: two years with your eyes closed.</p>
+    <p>The eyes open. On the wall: It waited for you. Evening comes. The room fades into one point of light. Everything you have ever seen, you saw in the dark.</p>
+  </article>
+</main>
+
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ───────── tools ───────── */
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+// a value choreographed along the scroll: [[progress, value], ...], eased between keys
+const track = (k) => (p) => {
+  if (p <= k[0][0]) return k[0][1];
+  for (let i = 1; i < k.length; i++) if (p <= k[i][0]) return lerp(k[i - 1][1], k[i][1], smooth(k[i - 1][0], k[i][0], p));
+  return k[k.length - 1][1];
+};
+const xtrack = (k) => { const t = track(k.map(([p, v]) => [p, Math.log2(v)])); return (p) => 2 ** t(p); };
+const linear = (k) => (p) => {
+  if (p <= k[0][0]) return k[0][1];
+  for (let i = 1; i < k.length; i++) if (p <= k[i][0]) return lerp(k[i - 1][1], k[i][1], (p - k[i - 1][0]) / (k[i][0] - k[i - 1][0]));
+  return k[k.length - 1][1];
+};
+const R = Math.random;
+const J = (s) => (R() - 0.5) * s;
+let seed = 91;
+const hr = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const COARSE = matchMedia('(pointer: coarse)').matches;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const N = COARSE ? 40000 : 80000;
+history.scrollRestoration = 'manual';
+scrollTo(0, 0);
+
+/* ───────── the score: everything that happens, by scroll position ───────── */
+const V = {
+  room: track([[0, 1], [0.138, 1], [0.142, 0], [0.866, 0], [0.876, 1], [0.955, 1], [0.972, 0]]),
+  lid: track([[0, 0], [0.056, 0], [0.126, 0.955], [0.14, 1], [0.866, 1], [0.872, 0.955], [0.896, 0]]),
+  lidWarm: track([[0, 1], [0.3, 1], [0.866, 0.2], [0.878, 1]]),
+  red: track([[0.138, 0], [0.142, 1], [0.2, 1], [0.245, 0]]),
+  grey: track([[0.2, 0], [0.24, 1], [0.37, 1], [0.405, 0], [0.955, 0], [0.985, 1]]),
+  snow: track([[0.21, 0], [0.25, 1], [0.3, 0.6], [0.37, 0.3], [0.405, 0], [0.96, 0], [0.99, 0.35]]),
+  after: track([[0.3, 0], [0.33, 1], [0.37, 0.6], [0.4, 0]]),
+  inner: track([[0.39, 0], [0.41, 1], [0.6005, 1], [0.6025, 0]]),
+  build: track([[0.41, 0.55], [0.5, 0.7], [0.56, 0.95], [0.598, 1.9]]),
+  rings: track([[0.54, 0], [0.585, 1], [0.6, 1], [0.6025, 0]]),
+  bloom: track([[0.586, 0], [0.5985, 1], [0.6005, 1], [0.6035, 0]]),
+  motes: track([[0.405, 0], [0.43, 0.02], [0.47, 0.15], [0.53, 0.45], [0.575, 1]]),
+  bloomR: track([[0.575, 0], [0.6, 1]]),
+  mem: track([[0.6, 0], [0.625, 1], [0.71, 1], [0.78, 0]]),
+  fade: track([[0, 1], [0.138, 1], [0.17, 0], [0.3, 0], [0.325, 1], [0.37, 1], [0.4, 0.15], [0.412, 1], [0.6005, 1], [0.6025, 0], [0.612, 0], [0.63, 1], [0.866, 1], [0.878, 0.28], [0.93, 0.28], [0.95, 1], [0.975, 0.6], [0.99, 0.8]]),
+  ink: track([[0, 1], [0.126, 1], [0.142, 0], [0.868, 0], [0.886, 1], [0.93, 1], [0.96, 0]]),
+  hud: track([[0, 1], [0.4, 1], [0.42, 0.55], [0.6, 0.55], [0.62, 1], [0.96, 1], [0.99, 0.4]]),
+  sat: track([[0, 0.8], [0.88, 0.8], [0.91, 1.02], [0.95, 0.9]]),
+  sunI: track([[0, 1], [0.905, 1], [0.948, 0]]),
+  sunEnd: track([[0.9, 0], [0.95, 1]]),
+  sunRoom: track([[0, 0], [0.07, 1], [0.87, 0]]),
+  dusk: track([[0.905, 0], [0.955, 1]]),
+  flat: track([[0.938, 0], [0.966, 1]]),
+  glass: track([[0, 1], [0.93, 1], [0.966, 0.85]]),
+  wallA: track([[0, 1], [0.86, 1], [0.866, 0]]),
+  wallB: track([[0.866, 0], [0.87, 1]]),
+  glowI: track([[0.955, 0], [0.966, 0.95], [0.99, 1]]),
+  glowMorph: track([[0.964, 0], [0.986, 1]]),
+  glowPull: track([[0.964, 0], [0.99, 1]]),
+  end1: track([[0.975, 0], [0.987, 1]]),
+  end2: track([[0.985, 0], [0.996, 1]]),
+  sig: track([[0.992, 0], [1, 1]]),
+  glyphZ: track([[0.8, -7.6], [0.866, -5.9]]),
+  appA: track([[0.486, 0], [0.496, 1], [0.508, 0.3], [0.514, 0]]),
+  appB: track([[0.516, 0], [0.526, 1], [0.538, 0.3], [0.544, 0]]),
+  appC: track([[0.546, 0], [0.556, 1], [0.568, 0.3], [0.574, 0]]),
+};
+// the blink's own clock: nearly all of it happens in ninety milliseconds
+const CLOCK = linear([[0.056, 0], [0.14, 0.08], [0.866, 0.17], [0.896, 0.3]]);
+const PHASE = [[0.056, 'open'], [0.14, 'lid descent'], [0.215, 'closed · red'], [0.3, 'closed · eigengrau'], [0.39, 'afterimage'], [0.605, 'behind the eyes'], [0.715, 'recall'], [0.785, 'forgetting'], [0.866, 'count'], [0.896, 'lid ascent'], [0.955, 'open · evening'], [2, 'open']];
+// what the particles hold: [until, image A, image B, turbulence, row A, row B]
+// 0 dust · 1 slit · 2 afterimage · 3 motes · 4 the room, recalled · 5 words blown away · 6 numeral
+// 7 the room, true · 8 bloom · 9 words of light · 10 words in the sunbeam · 11 the last glow
+const FORM = [
+  [0.042, 0, 0, 0], [0.058, 0, 10, 0.1], [0.074, 10, 10, 0], [0.112, 10, 1, 0.15], [0.2, 1, 1, 0], [0.3, 1, 2, 0], [0.37, 2, 2, 0], [0.405, 2, 3, 0.3],
+  [0.445, 3, 3, 0], [0.456, 3, 9, 0.25, 7, 7], [0.466, 9, 9, 0, 7, 7], [0.478, 9, 3, 0.25, 7, 7], [0.484, 3, 3, 0],
+  [0.492, 3, 9, 0.25, 8, 8], [0.499, 9, 9, 0, 8, 8], [0.509, 9, 3, 0.25, 8, 8], [0.514, 3, 3, 0],
+  [0.522, 3, 9, 0.25, 9, 9], [0.529, 9, 9, 0, 9, 9], [0.539, 9, 3, 0.25, 9, 9], [0.544, 3, 3, 0],
+  [0.552, 3, 9, 0.25, 10, 10], [0.559, 9, 9, 0, 10, 10], [0.569, 9, 3, 0.3, 10, 10], [0.578, 3, 3, 0],
+  [0.6, 3, 8, 0.6], [0.614, 8, 8, 0], [0.66, 8, 4, 1.2], [0.715, 4, 4, 0], [0.735, 4, 9, 0.6, 12, 12], [0.752, 9, 9, 0, 12, 12], [0.782, 9, 5, 0.2, 12, 12],
+  [0.8, 5, 5, 0], [0.83, 5, 6, 1.0], [0.852, 6, 6, 0], [0.868, 6, 1, 0.3], [0.9, 1, 7, 0.4], [0.93, 7, 0, 0.4], [0.972, 0, 0, 0], [0.99, 0, 11, 0.15], [2, 11, 11, 0],
+];
+const CAM = [
+  [0.0, [0.4, 1.55, 3.6], [-0.9, 1.7, -6]],
+  [0.1, [0.1, 1.6, 2.1], [-1.1, 1.85, -6]],
+  [0.16, [0.0, 1.6, 1.4], [-1.0, 1.8, -6]],
+  [0.3, [0.0, 1.6, 6.0], [0.0, 1.6, -6]],
+  [0.6, [0.0, 1.6, 6.0], [0.0, 1.6, -6]],
+  [0.625, [2.6, 3.2, 8.5], [-0.4, 1.0, -2.2]],
+  [0.66, [4.2, 4.6, 7.4], [-0.4, 1.0, -2.2]],
+  [0.715, [5.1, 3.9, 5.3], [-0.5, 1.1, -2.4]],
+  [0.8, [5.8, 3.4, 4.1], [-0.4, 1.2, -2.5]],
+  [0.86, [0.7, 1.6, 4.3], [-0.9, 1.7, -6]],
+  [0.9, [0.3, 1.55, 3.4], [-0.9, 1.72, -6]],
+  [0.95, [0.35, 1.55, 3.9], [-0.9, 1.72, -6]],
+  [1.0, [0.4, 1.55, 4.3], [-1.0, 1.8, -6]],
+];
+// words that live in the space itself. view: fixed to the eye. world: somewhere in the room.
+const TEXTS = [
+  { row: 2, view: [0, 0, -3], h: 0.15, r: [0.086, 0.142], col: [1.3, 1.22, 1.1], glow: 0.35 },
+  { row: 6, view: [1.55, -0.72, -6], viewP: [0, -1.5, -6], h: 0.24, r: [0.318, 0.37], col: [0.66, 0.76, 0.88], glow: 0.5, focus: 1 },
+  { row: 11, world: [-2.0, 2.45, -1.0], h: 0.46, r: [0.656, 0.707], col: [0.94, 0.84, 0.68], glow: 0.35, face: 1 },
+  { row: 15, world: [-0.85, 3.32, -5.95], h: 0.15, r: [0.664, 0.712], col: [0.86, 0.78, 0.66], glow: 0.15 },
+  { row: 16, world: [0.93, 0.08, -0.5], h: 0.11, r: [0.672, 0.716], col: [0.86, 0.78, 0.66], glow: 0.15, face: 1 },
+  { row: 13, view: [0, 1.05, -6], viewP: [0, 1.6, -6], h: 0.2, r: [0.786, 0.828], col: [0.9, 0.88, 0.84], glow: 0.3, focus: 1 },
+  { row: 17, view: [1.95, -0.1, -6.5], viewP: [0, -2.2, -6.5], h: 0.28, r: [0.832, 0.866], col: [0.94, 0.92, 0.88], glow: 0.3 },
+  { count: 1, view: [0, -1.75, -6], viewP: [0, -2.75, -6.5], h: 0.1, r: [0.84, 0.866], col: [0.66, 0.64, 0.6], glow: 0.1 },
+];
+// the typographic system: roman for the world, italic for the voice inside
+const ROWS = [
+  ['Stay with the light for a moment.'], ['in a moment, you will blink'], ['the world goes out.'],
+  ['It is not dark behind your eyelids.'], ['red.'], ['eigengrau'], ['But something stays.'],
+  ['Here, the light is yours.', 1], ['someone’s face', 1], ['a room you have never been in', 1], ['something you almost remember', 1],
+  ['Not the room. A copy.'], ['Most of it, you will not keep.'], ['About four hundred million blinks in a life.'], ['It waited for you.'],
+  ['the window was not here', 1], ['it had four legs', 1], ['years with your eyes closed'],
+  ['Everything you have ever seen,'], ['you saw in the dark.'],
+];
+
+/* ───────── the room ───────── */
+const SUN = [0.45, -0.42, 1]; // direction the light travels, per metre of depth
+const inGlass = (x, y) => x > -1.95 && x < -0.45 && y > 0.75 && y < 3.05 && Math.abs(x + 1.2) > 0.035 && Math.abs(y - 1.52) > 0.035 && Math.abs(y - 2.28) > 0.035;
+const litAt = (x, y, z) => { const s = z + 6; return s > 0 && inGlass(x - SUN[0] * s, y - SUN[1] * s); };
+const CHAIR = [ // centre, half size, group (4 chair, 2 the leg memory loses), weight
+  [[1.12, 0.45, -1.0], [0.22, 0.02, 0.21], 4, 0.25],
+  ...[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([dx, dz]) => [[1.12 + dx * 0.19, 0.215, -1.0 + dz * 0.18], [0.017, 0.215, 0.017], dx < 0 && dz > 0 ? 2 : 4, 0.08]),
+  ...[-1, 1].map((dz) => [[1.31, 0.72, -1.0 + dz * 0.18], [0.017, 0.25, 0.017], 4, 0.09]),
+  [[1.31, 0.95, -1.0], [0.015, 0.03, 0.2], 4, 0.07],
+  [[1.31, 0.75, -1.0], [0.012, 0.02, 0.2], 4, 0.05],
+];
+
+/* ───────── type, drawn once into one texture every shader can read ───────── */
+const ROW = 160, AW = 2048, AH = 4096;
+const rowW = new Array(ROWS.length).fill(0.5);
+const atlasData = new Uint8Array(AW * AH);
+const atlas = new THREE.DataTexture(atlasData, AW, AH, THREE.RedFormat, THREE.UnsignedByteType);
+atlas.minFilter = THREE.LinearMipmapLinearFilter; atlas.magFilter = THREE.LinearFilter; atlas.generateMipmaps = true;
+async function buildAtlas() {
+  try { await Promise.all([document.fonts.load('300 112px "Source Serif 4"'), document.fonts.load('italic 300 112px "Source Serif 4"')]); } catch {}
+  const c = document.createElement('canvas'); c.width = AW; c.height = ROW;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  ROWS.forEach(([t, it], r) => {
+    const font = (s) => `${it ? 'italic ' : ''}300 ${s}px "Source Serif 4", Georgia, serif`;
+    let size = 112; x.font = font(size);
+    let w = x.measureText(t).width;
+    if (w > AW * 0.94) { size *= (AW * 0.94) / w; x.font = font(size); w = x.measureText(t).width; }
+    x.clearRect(0, 0, AW, ROW); x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(t, AW / 2, ROW / 2 + size * 0.05);
+    rowW[r] = w / AW;
+    const d = x.getImageData(0, 0, AW, ROW).data;
+    for (let i = 0, o = r * ROW * AW; i < AW * ROW; i++) atlasData[o + i] = d[i * 4 + 3];
+  });
+  atlas.needsUpdate = true;
+}
+
+/* ───────── shared shader code ───────── */
+const GL_COMMON = /* glsl */ `
+uniform vec3 uSun;
+float box2(vec2 q, vec2 lo, vec2 hi, float w) {
+  vec2 a = smoothstep(lo - w, lo + w, q) * (1.0 - smoothstep(hi - w, hi + w, q));
+  return a.x * a.y;
+}
+float bar(float d, float hw, float w) { return smoothstep(hw - w, hw + w, abs(d)); }
+float glass(vec2 q, float w) {
+  return box2(q, vec2(-1.95, 0.75), vec2(-0.45, 3.05), w) * bar(q.x + 1.2, 0.035, w) * bar(q.y - 1.52, 0.035, w) * bar(q.y - 2.28, 0.035, w);
+}
+// is P in direct sunlight? trace back to the window and ask the glass
+float sunAt(vec3 P) {
+  float s = P.z + 6.0;
+  if (s <= 0.0) return 0.0;
+  return glass(P.xy - uSun.xy * s, 0.004 + 0.012 * s);
+}
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
+// leaves outside the window, moving the light a little
+float leaves(vec3 P, float t) { vec2 q = P.xy - uSun.xy * max(P.z + 6.0, 0.0); return 0.74 + 0.26 * smoothstep(0.36, 0.64, fbm(q * 1.8 + vec2(t * 0.11, t * 0.05))); }
+`;
+const GL_TYPE = /* glsl */ `
+#ifndef RS
+#define RS 0.0390625
+#define CH r
+#endif
+uniform sampler2D uAtlas;
+// one line of type, in row units: x across the row (±6.4), y up (±0.5)
+float glyphL(float row, vec2 p, float lod) {
+  float inb = step(abs(p.y), 0.5) * step(abs(p.x), 6.4);
+  return textureLod(uAtlas, vec2(0.5 + p.x / 12.8, (row + 0.5 - p.y) * RS), lod).CH * inb;
+}
+float softG(float row, vec2 p, float b) {
+  float lod = clamp(log2(max(b * 160.0, 1.0)), 0.0, 5.0);
+  return glyphL(row, p, lod) * 0.4 + (glyphL(row, p + vec2(b, 0.0), lod) + glyphL(row, p - vec2(b, 0.0), lod) + glyphL(row, p + vec2(0.0, b), lod) + glyphL(row, p - vec2(0.0, b), lod)) * 0.15;
+}
+// words assemble grain by grain, and leave the same way
+float dissolve(vec2 p, float a) { float n = noise(p * 7.0) * 0.7 + noise(p * 23.0) * 0.3; return smoothstep(n - 0.08, n + 0.08, a * 1.16 - 0.08); }
+float vis(vec2 p, vec2 ao) { return dissolve(p, ao.x) * (1.0 - dissolve(p + 3.7, ao.y)); }
+`;
+
+/* ───────── renderer ───────── */
+const canvas = $('#gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, COARSE ? 1.5 : 2));
+renderer.setClearColor(0x000000, 1);
+atlas.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 200);
+scene.add(camera);
+const SUNU = { value: new THREE.Vector3(...SUN) };
+const ROWU = { value: rowW };
+
+/* the states with no world in them: red, grey, the inside, the last light */
+const HA = Array.from({ length: 18 }, () => new THREE.Vector4());
+const HB = Array.from({ length: 18 }, () => new THREE.Vector4());
+const BG = {
+  uAtlas: { value: atlas }, uRowW: ROWU, uTime: { value: 0 }, uAspect: { value: 1 },
+  uRed: { value: 0 }, uBeat: { value: 0 }, uLid1: { value: new THREE.Vector2() }, uLid2: { value: new THREE.Vector2() },
+  uGrey: { value: 1 }, uSnow: { value: 0.25 }, uSnowT: { value: new THREE.Vector2() }, uAfter: { value: 0 },
+  uInner: { value: 0 }, uRings: { value: 0 }, uBloom: { value: 0 }, uBreath: { value: 0 }, uTrox: { value: 1 },
+  uApp: { value: new THREE.Vector3() }, uHA: { value: HA }, uHB: { value: HB }, uMem: { value: 0 },
+  uGlowI: { value: 0 }, uGlowMorph: { value: 1 }, uGlowPos: { value: new THREE.Vector2(0, 0.08) }, uGlowSize: { value: new THREE.Vector2(0.012, 0.012) },
+  uEnd1: { value: new THREE.Vector2() }, uEnd2: { value: new THREE.Vector2() }, uSig: { value: new THREE.Vector2() },
+};
+{
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: BG, depthTest: false, depthWrite: false,
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: GL_COMMON + GL_TYPE + `
+      uniform float uTime, uAspect, uRed, uBeat, uGrey, uSnow, uAfter, uInner, uRings, uBloom, uBreath, uTrox, uMem, uGlowI, uGlowMorph;
+      uniform float uRowW[${ROWS.length}];
+      uniform vec2 uLid1, uLid2, uSnowT, uGlowPos, uGlowSize, uEnd1, uEnd2, uSig;
+      uniform vec3 uApp;
+      uniform vec4 uHA[18], uHB[18];
+      varying vec2 vUv;
+      float fitH(float h, float row) { return min(h, uAspect * 0.86 / (12.8 * max(uRowW[int(row)], 0.05))); }
+      vec3 warmth(float w) { return mix(vec3(0.84, 0.88, 0.96), vec3(1.0, 0.93, 0.83), w); }
+      float windowShape(vec2 l, float s) {
+        return box2(l, vec2(-1.0), vec2(1.0), s) * bar(l.x, 0.05, s) * bar(l.y - 0.333, 0.045, s) * bar(l.y + 0.333, 0.045, s);
+      }
+      void main() {
+        vec2 q = (vUv - 0.5) * vec2(uAspect, 1.0);
+        float r = length(q);
+        vec3 col = vec3(0.0);
+
+        // red: daylight through the lids, and the words the lids let through
+        if (uRed > 0.001) {
+          vec3 red = mix(vec3(0.36, 0.055, 0.035), vec3(0.06, 0.008, 0.012), smoothstep(0.0, 0.9, r)) * (1.0 + 0.14 * uBeat);
+          vec2 p1 = (q - vec2(0.0, 0.07)) / fitH(0.06, 3.0);
+          float m1 = softG(3.0, p1, mix(0.16, 0.05, uLid1.x)) * vis(p1 * 0.2, uLid1);
+          vec2 p2 = (q - vec2(0.0, -0.03)) / fitH(0.34, 4.0);
+          float m2 = softG(4.0, p2, mix(0.14, 0.04, uLid2.x)) * vis(p2 * 0.5, uLid2);
+          red *= 1.0 + 1.1 * m1 + (1.0 + 0.4 * uBeat) * m2;
+          col = mix(col, red, uRed);
+        }
+        // eigengrau: the grey of nothing, alive with the eye's own static
+        if (uGrey > 0.001) {
+          vec3 eg = vec3(0.086, 0.086, 0.114) * (0.8 + 0.45 * fbm(q * 1.4 + vec2(uTime * 0.015, -uTime * 0.01)));
+          float sn = hash(floor(gl_FragCoord.xy / 1.5) + floor(uTime * 24.0) * vec2(17.0, 31.0));
+          vec2 p5 = (q - vec2(0.0, 0.02)) / fitH(0.2, 5.0);
+          float m5 = softG(5.0, p5, 0.025) * vis(p5 * 0.4, uSnowT);
+          eg += vec3((sn - 0.5) * 0.045 * uSnow);
+          eg += vec3(0.55, 0.55, 0.62) * step(0.9992, sn) * uSnow * 0.35;
+          eg += vec3(0.5, 0.5, 0.56) * step(1.0 - m5 * 0.24, sn) * 0.32 + vec3(0.01, 0.01, 0.014) * m5; // the word, only as a density of static
+          col = mix(col, eg, uGrey);
+        }
+        col += vec3(0.03, 0.045, 0.065) * uAfter * exp(-r * r * 5.0);
+
+        // behind the eyes: light that is perceived rather than present
+        if (uInner > 0.001) {
+          vec3 acc = vec3(0.0);
+          for (int i = 0; i < 18; i++) {
+            vec4 A = uHA[i], B = uHB[i];
+            if (B.y <= 0.001) continue;
+            float d = length(q - A.xy), rr = A.z, s = A.w;
+            float k = (d - rr) / (s + 0.004);
+            float rim = exp(-k * k);
+            float disc = 1.0 - smoothstep(rr - s, rr + s, d);
+            float glow = exp(-d / (rr * 1.6 + 0.02));
+            float shape = B.x < 0.35 ? rim * 0.5 + disc * 0.06 : B.x < 0.7 ? disc * 0.28 + rim * 0.35 : exp(-d * d / (rr * rr * 0.35)) * 0.8;
+            acc += warmth(B.z) * (shape + glow * 0.12) * B.y * B.w;
+          }
+          acc += vec3(0.95, 0.9, 0.84) * pow(0.5 + 0.5 * sin(r * 34.0 - uTime * 1.1), 6.0) * exp(-r * 2.2) * uRings * 0.2;
+          // shapes that are almost something
+          q.x /= min(1.0, uAspect / 1.3);
+          acc += vec3(1.0, 0.93, 0.84) * uApp.x * 0.24 * exp(-dot((q - vec2(-0.24, 0.05)) / vec2(0.11, 0.15), (q - vec2(-0.24, 0.05)) / vec2(0.11, 0.15)) * 1.4);
+          acc += vec3(1.0, 0.92, 0.8) * uApp.y * (box2(q, vec2(0.28, -0.3), vec2(0.4, 0.14), 0.035) * 0.3 + exp(-length(q - vec2(0.34, -0.3)) * 7.0) * 0.07);
+          acc += vec3(0.95, 0.93, 0.9) * uApp.z * windowShape((q - vec2(-0.05, 0.08)) / vec2(0.09, 0.14), 0.12) * 0.28;
+          q.x *= min(1.0, uAspect / 1.3);
+          col += acc * (0.85 + 0.15 * uBreath) * uTrox * uInner;
+          col = mix(col, vec3(1.0, 0.965, 0.915) * (1.0 - 0.28 * r), uBloom);
+        }
+        col = mix(col, vec3(0.06, 0.05, 0.042) * (1.15 - r * 0.9), uMem);
+
+        // one light: the threshold, and the end
+        if (uGlowI > 0.001) {
+          vec2 l = (q - uGlowPos) / uGlowSize;
+          float core = mix(windowShape(l, 0.06 + 0.3 * uGlowMorph), exp(-dot(l, l) * 1.6), uGlowMorph);
+          float d = length(q - uGlowPos);
+          float halo = exp(-d / (0.05 + 0.25 * length(uGlowSize))) * 0.22 + exp(-d * 60.0) * 0.5;
+          col += vec3(1.0, 0.95, 0.88) * (core * 0.9 + halo) * uGlowI * (0.9 + 0.1 * uBreath);
+          // the last words, lit by nothing but this
+          float lit = uGlowI * (0.3 + 0.9 / (1.0 + d * d * 26.0));
+          vec2 e1 = (q - uGlowPos - vec2(0.0, -0.15)) / fitH(0.05, 18.0);
+          vec2 e2 = (q - uGlowPos - vec2(0.0, -0.215)) / fitH(0.05, 19.0);
+          float t1 = softG(18.0, e1, 0.015) * vis(e1 * 0.35, uEnd1), t2 = softG(19.0, e2, 0.015) * vis(e2 * 0.35, uEnd2);
+          col += vec3(0.93, 0.89, 0.83) * (t1 + t2) * lit * 0.75;
+        }
+        // its name, in its own colour
+        vec2 ps = (q - vec2(0.0, -0.405)) / fitH(0.03, 5.0);
+        col += vec3(0.024, 0.024, 0.032) * glyphL(5.0, ps, 0.0) * vis(ps * 0.5, uSig);
+        col += (hash(gl_FragCoord.xy + fract(uTime) * 91.0) - 0.5) / 255.0;
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  }));
+  m.frustumCulled = false; m.renderOrder = -1;
+  scene.add(m);
+}
+
+/* the real room: walls, floor, a chair, light, and words painted on the wall */
+const RU = {
+  uSun: SUNU, uAtlas: { value: atlas }, uRoom: { value: 0 }, uExpo: { value: 1 }, uSat: { value: 0.8 }, uTime: { value: 0 },
+  uSunI: { value: 1 }, uSunCol: { value: new THREE.Vector3(1.9, 1.7, 1.38) }, uDusk: { value: 0 }, uFlat: { value: 0 }, uGlass: { value: 1 },
+  uWallA: { value: 1 }, uWallB: { value: 0 },
+};
+const roomParts = [];
+const beamPos = new Float32Array(6 * 4 * 6 * 3);
+{
+  const parts = [];
+  const add = (geo, alb) => parts.push([geo.toNonIndexed(), alb]);
+  const WALL = [0.74, 0.73, 0.7];
+  add(new THREE.PlaneGeometry(8.4, 3.4).translate(0, 1.7, -6), WALL);
+  add(new THREE.PlaneGeometry(8.4, 11).rotateX(-Math.PI / 2).translate(0, 0, -0.5), [0.55, 0.47, 0.39]);
+  add(new THREE.PlaneGeometry(8.4, 11).rotateX(Math.PI / 2).translate(0, 3.4, -0.5), [0.8, 0.79, 0.76]);
+  add(new THREE.PlaneGeometry(11, 3.4).rotateY(Math.PI / 2).translate(-4.2, 1.7, -0.5), WALL);
+  add(new THREE.PlaneGeometry(11, 3.4).rotateY(-Math.PI / 2).translate(4.2, 1.7, -0.5), WALL);
+  for (const [c, h] of CHAIR) add(new THREE.BoxGeometry(h[0] * 2, h[1] * 2, h[2] * 2).translate(...c), [0.2, 0.15, 0.11]);
+  const pos = [], nor = [], alb = [];
+  for (const [g, a] of parts) {
+    pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array);
+    for (let i = 0; i < g.attributes.position.count; i++) alb.push(...a);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('aAlb', new THREE.Float32BufferAttribute(alb, 3));
+  const mesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+    uniforms: RU, transparent: true,
+    vertexShader: `
+      attribute vec3 aAlb;
+      varying vec3 vW, vN, vAlb;
+      void main() { vW = position; vN = normal; vAlb = aAlb; gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: GL_COMMON + `
+      uniform sampler2D uAtlas;
+      uniform float uRoom, uExpo, uSat, uTime, uSunI, uDusk, uFlat, uGlass, uWallA, uWallB;
+      uniform vec3 uSunCol;
+      varying vec3 vW, vN, vAlb;
+      float hitBox(vec3 o, vec3 d, vec3 c, vec3 h) {
+        vec3 t0 = (c - h - o) / d, t1 = (c + h - o) / d;
+        vec3 a = min(t0, t1), b = max(t0, t1);
+        return step(max(max(max(a.x, a.y), a.z), 0.0), min(min(b.x, b.y), b.z));
+      }
+      float chairShadow(vec3 P) {
+        vec3 d = -normalize(uSun);
+        float s = hitBox(P, d, vec3(1.12, 0.45, -1.0), vec3(0.22, 0.02, 0.21));
+        s = max(s, hitBox(P, d, vec3(1.31, 0.72, -1.0), vec3(0.017, 0.25, 0.2)));
+        for (int i = 0; i < 4; i++) {
+          vec2 k = vec2(i < 2 ? -1.0 : 1.0, mod(float(i), 2.0) < 0.5 ? -1.0 : 1.0);
+          s = max(s, hitBox(P, d, vec3(1.12 + k.x * 0.19, 0.215, -1.0 + k.y * 0.18), vec3(0.017, 0.215, 0.017)));
+        }
+        return s;
+      }
+      vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
+      void main() {
+        vec3 N = normalize(vN), P = vW, alb = vAlb;
+        float back = step(0.5, N.z) * step(P.z, -5.99);
+        // painted words on the back wall, beside the window
+        vec2 pw = (P.xy - vec2(2.1, 2.05)) / 0.27;
+        float inb = step(abs(pw.y), 0.5) * step(abs(pw.x), 6.4) * back;
+        float mw = (texture(uAtlas, vec2(0.5 + pw.x / 12.8, (0.5 - pw.y) * 0.0390625)).r * uWallA + texture(uAtlas, vec2(0.5 + pw.x / 12.8, (14.5 - pw.y) * 0.0390625)).r * uWallB) * inb;
+        alb *= 1.0 - 0.5 * mw;
+        float direct = sunAt(P) * max(dot(N, -normalize(uSun)), 0.0) * leaves(P, uTime) * uSunI;
+        if (N.y > 0.5) {
+          direct *= 1.0 - 0.92 * chairShadow(P);
+          float d = min(fract(P.x * 5.0), 1.0 - fract(P.x * 5.0));
+          alb *= mix(0.84, 1.0, smoothstep(0.0, 0.035, d)) * (0.94 + 0.06 * hash(vec2(floor(P.x * 5.0), 3.0)));
+        } else if (abs(N.y) < 0.5 && vAlb.r > 0.5) {
+          alb *= 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.014, abs(P.y - 0.92)));
+          alb *= mix(0.7, 1.0, smoothstep(0.13, 0.15, P.y));
+        }
+        float gl = glass(P.xy, 0.004 + 0.05 * uFlat) * back;
+        float win = box2(P.xy, vec2(-2.0, 0.7), vec2(-0.4, 3.1), 0.004) * back;
+        vec2 dq = max(abs(P.xy - vec2(-1.2, 1.9)) - vec2(0.8, 1.2), 0.0);
+        float dW = length(vec3(dq, (P.z + 6.0) * 0.7));
+        float amb = 0.2 + 0.32 * exp(-dW * 0.35) + 0.12 * exp(-length(P.xz - vec2(0.8, -1.5)) * 0.4) * uSunI;
+        float ao = 1.0 - 0.4 * exp(-P.y * 3.0) * (1.0 - step(0.5, N.y)) - 0.25 * exp(-(3.4 - P.y) * 3.0);
+        vec3 ambC = mix(vec3(0.82, 0.87, 0.95), vec3(0.3, 0.36, 0.5) * 0.55, uDusk);
+        vec3 col = alb * (amb * ao * ambC + direct * uSunCol);
+        col = mix(col, vec3(0.06, 0.055, 0.05) * (1.0 - uDusk * 0.6), win * (1.0 - gl));
+        col += gl * mix(vec3(3.0, 2.95, 2.8), vec3(1.3, 1.24, 1.16), uDusk) * uGlass;
+        col += vec3(1.0, 0.94, 0.84) * 0.28 * exp(-dW * 1.8) * (1.0 - win) * uGlass * (1.0 - 0.6 * uDusk);
+        col = aces(col * uExpo);
+        col = mix(vec3(dot(col, vec3(0.299, 0.587, 0.114))), col, uSat);
+        col = pow(col, vec3(1.0 / 2.2));
+        // evening: the room lets go of its edges; only the window keeps its shape
+        col = mix(col, vec3(0.085, 0.09, 0.115) + vec3(0.85, 0.82, 0.78) * gl * uGlass, uFlat);
+        gl_FragColor = vec4(col, uRoom);
+      }`,
+  }));
+  mesh.renderOrder = 1;
+  scene.add(mesh); roomParts.push(mesh);
+
+  const bg = new THREE.BufferGeometry();
+  bg.setAttribute('position', new THREE.BufferAttribute(beamPos, 3));
+  const beams = new THREE.Mesh(bg, new THREE.ShaderMaterial({
+    uniforms: RU, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    vertexShader: `varying vec3 vW; void main() { vW = position; gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: GL_COMMON + `
+      uniform float uRoom, uTime, uSunI;
+      varying vec3 vW;
+      void main() {
+        float s = vW.z + 6.0;
+        float motes = 0.75 + 0.25 * noise(vW.xy * 3.0 + vec2(vW.z, uTime * 0.06));
+        float a = 0.05 * exp(-s * 0.1) * smoothstep(0.0, 0.5, vW.y) * leaves(vW, uTime) * motes * uRoom * uSunI;
+        gl_FragColor = vec4(vec3(1.0, 0.92, 0.78) * a, 1.0);
+      }`,
+  }));
+  beams.renderOrder = 2; beams.frustumCulled = false;
+  scene.add(beams); roomParts.push(beams);
+}
+// the six shafts of light follow the sun
+function updateBeams(sx, sy) {
+  let n = 0;
+  for (const [x0, x1] of [[-1.95, -1.235], [-1.165, -0.45]]) for (const [y0, y1] of [[0.75, 1.485], [1.555, 2.245], [2.315, 3.05]]) {
+    const c = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => { const s = y / -sy; return [[x, y, -6], [x + sx * s, 0, -6 + s]]; });
+    for (let i = 0; i < 4; i++) {
+      const [a0, a1] = c[i], [b0, b1] = c[(i + 1) % 4];
+      for (const v of [a0, b0, b1, a0, b1, a1]) { beamPos[n++] = v[0]; beamPos[n++] = v[1]; beamPos[n++] = v[2]; }
+    }
+  }
+  roomParts[1].geometry.attributes.position.needsUpdate = true;
+}
+
+/* words that float in the space: light, not labels */
+const counterC = document.createElement('canvas'); counterC.width = AW; counterC.height = ROW;
+const counterTex = new THREE.CanvasTexture(counterC);
+counterTex.flipY = false; counterTex.minFilter = THREE.LinearMipmapLinearFilter;
+const textMat = (tex, counter) => new THREE.ShaderMaterial({
+  uniforms: { uAtlas: { value: tex }, uRow: { value: 0 }, uBlur: { value: 0.02 }, uGlow: { value: 0.3 }, uAO: { value: new THREE.Vector2() }, uCol: { value: new THREE.Vector3(1, 1, 1) } },
+  defines: counter ? { RS: '1.0', CH: 'a' } : {},
+  transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: GL_COMMON + GL_TYPE + `
+    uniform float uRow, uBlur, uGlow;
+    uniform vec2 uAO;
+    uniform vec3 uCol;
+    varying vec2 vUv;
+    void main() {
+      vec2 p = vec2((vUv.x - 0.5) * 12.8, vUv.y - 0.5);
+      float m = softG(uRow, p, uBlur), g = softG(uRow, p, 0.22);
+      gl_FragColor = vec4(uCol * (m + g * uGlow) * vis(p * 0.5, uAO), 1.0);
+    }`,
+});
+const planeGeo = new THREE.PlaneGeometry(1, 1);
+for (const T of TEXTS) {
+  T.mesh = new THREE.Mesh(planeGeo, textMat(T.count ? counterTex : atlas, T.count));
+  T.mesh.material.uniforms.uRow.value = T.count ? 0 : T.row;
+  T.mesh.material.uniforms.uCol.value.set(...T.col);
+  T.mesh.material.uniforms.uGlow.value = T.glow;
+  T.mesh.visible = false; T.mesh.renderOrder = 4; T.mesh.frustumCulled = false;
+  (T.view ? camera : scene).add(T.mesh);
+}
+let counterAt = -9;
+function drawCounter(n) {
+  const x = counterC.getContext('2d');
+  x.clearRect(0, 0, AW, ROW);
+  x.font = '400 64px "Source Serif 4", Georgia, serif'; x.letterSpacing = '12px';
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(`SINCE YOU ARRIVED, YOU HAVE BLINKED ABOUT ${n} TIMES`, AW / 2, ROW / 2);
+  counterTex.needsUpdate = true;
+}
+
+/* ───────── the particles: the same light, rearranged by the mind ───────── */
+const PU = {
+  uSun: SUNU, uAtlas: { value: atlas }, uRowW: ROWU,
+  uTime: { value: 0 }, uFA: { value: 0 }, uFB: { value: 0 }, uMix: { value: 0 }, uFade: { value: 0 }, uFlight: { value: 0 },
+  uStag: { value: 0 }, uScale: { value: 800 }, uHalfW: { value: 1 }, uHalfH: { value: 0.41 }, uRowA: { value: 0 }, uRowB: { value: 0 },
+  uTextPos: { value: new THREE.Vector3(0, 0.05, -5) }, uTextH: { value: 0.34 }, uMotes: { value: 0 }, uBloomR: { value: 0 },
+  uTrox: { value: 1 }, uSunI: { value: 1 }, uGlowV: { value: new THREE.Vector3(0, 0, -4) }, uGlyph: { value: new THREE.Vector3(0, 0, -7) },
+  uTilt: { value: new THREE.Matrix3() }, uBeamH: { value: 0.26 },
+};
+const pGeo = new THREE.BufferGeometry();
+{
+  const pos = new Float32Array(N * 3), seedA = new Float32Array(N * 4), gly = new Float32Array(N * 4);
+  const onBox = (c, h) => { const p = [c[0] + J(2 * h[0]), c[1] + J(2 * h[1]), c[2] + J(2 * h[2])], a = (R() * 3) | 0; p[a] = c[a] + (R() < 0.5 ? -h[a] : h[a]); return p; };
+  const pane = () => { let x, y; do { x = lerp(-1.95, -0.45, R()); y = lerp(0.75, 3.05, R()); } while (!inGlass(x, y)); return [x, y]; };
+  const cw = CHAIR.reduce((s, c) => s + c[3], 0);
+  const WALL_LINES = [
+    [[-4.2, 0, -6], [4.2, 0, -6]], [[-4.2, 0.92, -6], [4.2, 0.92, -6]], [[-4.2, 3.4, -6], [4.2, 3.4, -6]],
+    [[-4.2, 0, -6], [-4.2, 0, 4.5]], [[-4.2, 0.92, -6], [-4.2, 0.92, 4.5]], [[4.2, 0, -6], [4.2, 0, 4.5]],
+    [[4.2, 0.92, -6], [4.2, 0.92, 4.5]], [[-4.2, 0, -6], [-4.2, 3.4, -6]], [[4.2, 0, -6], [4.2, 3.4, -6]],
+  ];
+  const FRAME = [[-2, 0.7, -0.4, 0.7], [-2, 3.1, -0.4, 3.1], [-2, 0.7, -2, 3.1], [-0.4, 0.7, -0.4, 3.1], [-1.2, 0.7, -1.2, 3.1], [-2, 1.52, -0.4, 1.52], [-2, 2.28, -0.4, 2.28]];
+  function roomPoint() {
+    const k = R();
+    if (k < 0.2) { const s = FRAME[(R() * FRAME.length) | 0], t = R(); return [lerp(s[0], s[2], t) + J(0.05), lerp(s[1], s[3], t) + J(0.05), -5.97 + J(0.04), 1]; }
+    if (k < 0.26) return [...pane(), -5.99, 1];
+    if (k < 0.44) for (let n = 0; n < 40; n++) { const x = lerp(-1.3, 3.0, R()), z = lerp(-4.4, 1.5, R()); if (litAt(x, 0, z)) return [x, 0.01, z, 3]; }
+    if (k < 0.52) { const [x, y] = pane(), s = (R() * y) / 0.42; return [x + SUN[0] * s, y + SUN[1] * s, -6 + s, 3]; }
+    if (k < 0.68) { let w = R() * cw; for (const [c, h, g, wt] of CHAIR) { if ((w -= wt) <= 0) return [...onBox(c, h), g]; } }
+    if (k < 0.8) return [-4.2 + 0.2 * ((R() * 42) | 0), 0.004, lerp(-6, 4.5, R()), 0];
+    const [a, b] = WALL_LINES[(R() * WALL_LINES.length) | 0], t = R();
+    return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t), 0];
+  }
+  for (let i = 0; i < N; i++) {
+    const r = roomPoint();
+    pos.set(r.slice(0, 3), i * 3);
+    seedA.set([R(), R(), R(), R()], i * 4);
+    gly[i * 4 + 3] = r[3];
+  }
+  pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  pGeo.setAttribute('aSeed', new THREE.Float32BufferAttribute(seedA, 4));
+  pGeo.setAttribute('aGlyph', new THREE.Float32BufferAttribute(gly, 4));
+}
+{
+  const pts = new THREE.Points(pGeo, new THREE.ShaderMaterial({
+    uniforms: PU, transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: GL_COMMON + `
+      uniform sampler2D uAtlas;
+      uniform float uRowW[${ROWS.length}];
+      uniform float uTime, uFA, uFB, uMix, uFade, uFlight, uStag, uScale, uHalfW, uHalfH, uRowA, uRowB, uTextH, uMotes, uBloomR, uTrox, uSunI, uBeamH;
+      uniform vec3 uTextPos, uGlowV, uGlyph;
+      uniform mat3 uTilt;
+      attribute vec4 aSeed;
+      attribute vec4 aGlyph;
+      varying vec3 vC;
+      varying float vRing;
+      float gTextX, gRing;
+      vec3 h3(vec4 s) { return fract(sin(vec3(dot(s, vec4(12.9898, 78.233, 37.719, 4.11)), dot(s, vec4(39.35, 11.13, 83.1, 17.7)), dot(s, vec4(73.1, 29.7, 5.3, 61.9)))) * 43758.5453); }
+      vec3 view(vec3 w) { return (viewMatrix * vec4(w, 1.0)).xyz; }
+      // a random point inside the letters of one line
+      vec2 textPoint(float row, vec4 s, out float ok) {
+        float w = uRowW[int(row)];
+        vec2 c = s.xy;
+        ok = 0.0;
+        for (int i = 0; i < 14; i++) {
+          vec2 pr = vec2((c.x - 0.5) * w * 12.8, c.y - 0.5);
+          if (textureLod(uAtlas, vec2(0.5 + pr.x / 12.8, (row + 0.5 - pr.y) * 0.0390625), 0.0).r > 0.5) { ok = 1.0; return pr; }
+          c = fract(c + vec2(0.6180339, 0.4142136) + s.zw * 0.37);
+        }
+        return vec2((s.x - 0.5) * w * 12.8, s.y - 0.5);
+      }
+      void form(float id, float row, out vec3 p, out vec3 c, out float a, out float z) {
+        vec4 s = aSeed;
+        vec3 r = h3(s);
+        float t = uTime, ok;
+        gRing = 0.0;
+        if (id < 0.5) {            // dust in the sunlight
+          vec2 w = vec2(mix(-1.95, -0.45, s.x), mix(0.75, 3.05, s.y));
+          vec3 q = vec3(w, -6.0) + uSun * (s.z * w.y / -uSun.y);
+          if (r.x < 0.4) q = vec3(mix(-3.8, 3.8, s.x), mix(0.05, 3.3, s.y), mix(-5.8, 3.0, s.z));
+          q += vec3(sin(t * 0.08 + r.y * 40.0), sin(t * 0.06 + r.z * 30.0) * 0.6, cos(t * 0.07 + r.x * 20.0)) * 0.35;
+          p = view(q);
+          c = vec3(1.0, 0.95, 0.86) * (0.05 + 1.5 * sunAt(q) * uSunI);
+          a = step(s.w, 0.06);
+          z = 0.011 * (0.6 + r.z);
+        } else if (id < 1.5) {     // the slit between the lids
+          float x = s.x * 2.0 - 1.0, e = 1.0 - smoothstep(0.55, 1.08, abs(x));
+          p = vec3(x * uHalfW * 4.0 * 1.08, (r.y + r.z - 1.0) * 0.026, -4.0);
+          c = vec3(1.0, 0.93, 0.8) * (0.3 + 0.5 * e);
+          a = step(s.w, 0.4) * e;
+          z = 0.02;
+        } else if (id < 2.5) {     // the window, burned in
+          float i = floor(s.x * 6.0), col = mod(i, 2.0), rw = floor(i / 2.0);
+          vec2 lo = vec2(col < 0.5 ? -1.95 : -1.165, rw < 0.5 ? 0.75 : rw < 1.5 ? 1.555 : 2.315);
+          vec2 sz = vec2(0.715, rw > 0.5 && rw < 1.5 ? 0.69 : 0.735);
+          vec2 uv = s.yz;
+          p = uTilt * (vec3(lo + uv * sz - vec2(-1.2, 1.9), 0.0) * 1.15) + vec3(sin(t * 0.21) * 0.12, cos(t * 0.17) * 0.08, -6.0);
+          float e = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+          c = vec3(0.6, 0.72, 0.86) * (0.2 + 0.7 * exp(-e * 22.0)) * (0.8 + 0.2 * sin(t * 0.9 + s.y * 3.0));
+          a = step(s.w, 0.6);
+          z = 0.035;
+        } else if (id < 3.5) {     // motes behind the eyes: floaters, soft points, rings
+          float zz = mix(-2.2, -15.0, s.z);
+          p = vec3((s.xy * 2.0 - 1.0) * vec2(uHalfW, uHalfH) * -zz * 1.05, zz);
+          p += vec3(sin(t * 0.05 + r.x * 30.0), cos(t * 0.045 + r.y * 30.0), sin(t * 0.03 + r.z * 20.0)) * vec3(0.25, 0.2, 0.3) * (-zz * 0.12);
+          bool big = r.x < 0.06 * uMotes; // the soft forms come later; first there is almost nothing
+          gRing = big && r.y < 0.3 ? 1.0 : 0.0;
+          c = vec3(1.0, 0.95, 0.87) * (big ? 0.06 : 0.26) * uTrox;
+          a = step(s.w, 0.012 + 0.3 * uMotes);
+          z = big ? mix(0.18, 0.55, r.z) : 0.01;
+        } else if (id < 4.5 || (id > 6.5 && id < 7.5)) { // the room, recalled (4) or seen again (7)
+          float wrong = id < 4.5 ? 1.0 : 0.0, g = aGlyph.w;
+          vec3 q = position;
+          if (g > 0.5 && g < 1.5) q.xy += vec2(0.35, -0.18) * wrong;
+          q += (r - 0.5) * 0.09 * wrong + sin(t * vec3(0.4, 0.33, 0.37) + r * 20.0) * 0.035 * wrong;
+          p = view(q);
+          c = mix(vec3(1.0, 0.97, 0.92), vec3(0.92, 0.8, 0.62), wrong) * (0.24 + 0.85 * step(2.5, g) * step(g, 3.5) + 0.5 * step(3.5, g));
+          a = (g > 1.5 && g < 2.5 ? 1.0 - wrong : 1.0) * step(0.14 * wrong, r.y) * mix(0.3, 1.0, wrong);
+          z = 0.018;
+        } else if (id < 5.5) {     // the sentence, carried off
+          vec2 tp = textPoint(12.0, s, ok);
+          gTextX = tp.x;
+          p = uTextPos + vec3(tp * uTextH, 0.0) + vec3(1.0, 0.25, 0.3) * (1.5 + 5.0 * r.x) + sin(t * vec3(0.3, 0.25, 0.2) + r.yzx * 25.0) * 0.8;
+          p.z = min(p.z, -0.6);
+          c = vec3(0.62, 0.59, 0.54) * 0.35;
+          a = ok * step(s.w, 0.4) * 0.8;
+          z = 0.02;
+        } else if (id < 6.5) {     // the numeral
+          p = aGlyph.xyz + uGlyph + vec3(sin(t * 0.5 + r.x * 30.0), cos(t * 0.4 + r.y * 30.0), 0.0) * 0.012;
+          c = vec3(0.94, 0.92, 0.88) * 0.45;
+          a = 1.0;
+          z = 0.018;
+        } else if (id < 8.5) {     // bloom: everything becomes light
+          vec3 dir = normalize(h3(s.yzxw) - 0.5 + 1e-4);
+          p = vec3(0.0, 0.0, -6.0) + dir * (0.4 + 6.5 * uBloomR * (0.25 + 0.75 * r.x));
+          p.z = min(p.z, -0.4);
+          c = vec3(1.0, 0.95, 0.88) * (0.12 + 0.22 * uBloomR) * (1.0 - 0.85 * smoothstep(0.55, 0.95, uBloomR));
+          a = step(s.w, 0.35);
+          z = 0.02 + 0.12 * uBloomR * r.y;
+        } else if (id < 9.5) {     // words made of the same light
+          vec2 tp = textPoint(row, s, ok);
+          gTextX = tp.x;
+          p = uTextPos + vec3(tp * uTextH, (r.z - 0.5) * 0.04) + vec3(sin(t * 0.6 + r.x * 30.0), cos(t * 0.5 + r.y * 30.0), 0.0) * 0.003;
+          c = vec3(1.0, 0.95, 0.87) * 0.42;
+          a = ok * step(s.w, 0.4);
+          z = 0.011;
+        } else if (id < 10.5) {    // words in the sunbeam, visible where the light crosses them
+          vec2 tp = textPoint(1.0, s, ok);
+          vec3 q = vec3(0.35, 1.02, -2.6) + vec3(tp * uBeamH, (r.z - 0.5) * 0.05);
+          q += vec3(sin(t * 0.08 + r.y * 40.0), sin(t * 0.06 + r.z * 30.0), cos(t * 0.07 + r.x * 20.0)) * 0.008;
+          p = view(q);
+          c = vec3(1.0, 0.95, 0.86) * (0.1 + 1.3 * sunAt(q) * uSunI);
+          a = ok * step(s.w, 0.35);
+          z = 0.008;
+        } else {                   // the last light
+          p = uGlowV + (r - 0.5) * 0.05;
+          c = vec3(1.0, 0.95, 0.88) * 0.3;
+          a = step(s.w, 0.1);
+          z = 0.006;
+        }
+      }
+      void main() {
+        gTextX = 0.0;
+        vec3 pa, pb, ca, cb;
+        float aa, ab, za, zb;
+        form(uFA, uRowA, pa, ca, aa, za);
+        float ringA = gRing;
+        form(uFB, uRowB, pb, cb, ab, zb);
+        float ringB = gRing;
+        float st = aSeed.w;
+        if (uStag > 0.5) st = clamp(1.0 - (gTextX / (12.8 * uRowW[12]) + 0.5), 0.0, 1.0); // the end of the sentence goes first
+        float m = smoothstep(st * 0.55, st * 0.55 + 0.45, uMix);
+        float fl = sin(3.14159 * m) * uFlight;
+        vec3 p = mix(pa, pb, m);
+        p += (h3(aSeed.wzyx) - 0.5) * fl + sin(p.yzx * vec3(0.8, 0.7, 0.6) + uTime * vec3(0.6, 0.5, 0.7)) * fl * 0.5;
+        float a = mix(aa, ab, m) * uFade;
+        float px = mix(za, zb, m) * uScale / max(-p.z, 0.05);
+        if (px < 1.0) { a *= px; px = 1.0; }
+        gl_PointSize = min(px, 180.0);
+        vC = mix(ca, cb, m) * a;
+        vRing = mix(ringA, ringB, m);
+        gl_Position = a < 0.002 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: `
+      varying vec3 vC;
+      varying float vRing;
+      void main() {
+        vec2 q = gl_PointCoord - 0.5;
+        float d = dot(q, q) * 4.0;
+        if (d > 1.0) discard;
+        float k = (sqrt(d) - 0.72) / 0.13;
+        gl_FragColor = vec4(vC * mix(exp(-d * 4.0), exp(-k * k) * 0.9 + exp(-d * 3.0) * 0.12, vRing), 1.0);
+      }`,
+  }));
+  pts.frustumCulled = false; pts.renderOrder = 3;
+  scene.add(pts);
+}
+// the numeral is drawn in the page's own typeface, then sampled into points
+async function sampleGlyph(ch) {
+  const S = 420, c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.font = '400 380px "Source Serif 4", Georgia, serif'; x.textAlign = 'center'; x.fillStyle = '#fff';
+  x.fillText(ch, S / 2, S * 0.82);
+  const d = x.getImageData(0, 0, S, S).data, px = [];
+  let y0 = S, y1 = 0;
+  for (let y = 0; y < S; y++) for (let i = 0; i < S; i++) if (d[(y * S + i) * 4 + 3] > 140) { px.push(i, y); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  if (!px.length) return;
+  const k = 4.2 / (y1 - y0), cy = (y0 + y1) / 2, a = pGeo.attributes.aGlyph;
+  for (let n = 0; n < N; n++) {
+    const j = ((R() * px.length) / 2 | 0) * 2;
+    a.setXYZ(n, (px[j] + R() - S / 2) * k, -(px[j + 1] + R() - cy) * k, J(0.5));
+  }
+  a.needsUpdate = true;
+}
+
+/* ───────── the lids ───────── */
+const lidC = $('#lid'), lx = lidC.getContext('2d');
+function drawLid(v, warm) {
+  const W = lidC.width, H = lidC.height;
+  // fully shut, the page itself paints what is behind the lids
+  if (v <= 0.002 || v >= 0.999) { lidC.style.opacity = 0; return; }
+  lidC.style.opacity = 1;
+  lx.clearRect(0, 0, W, H);
+  const g = lx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.9);
+  [[0, 0], [0.25, 0.16], [0.5, 0.5], [0.75, 0.84], [1, 1]].forEach(([o, e]) => {
+    const c = [lerp(92, 15, e), lerp(14, 2, e), lerp(9, 3, e)].map((ch) => Math.round(lerp(ch * 0.2, ch, warm)));
+    g.addColorStop(o, `rgb(${c})`);
+  });
+  lx.fillStyle = g; lx.fillRect(0, 0, W, H);
+  const open = 1 - v, up = open * H * 1.25, dn = open * H * 0.75, cy = H * 0.5;
+  lx.globalCompositeOperation = 'destination-out';
+  lx.shadowColor = '#000'; lx.shadowBlur = Math.max(3, H * 0.022);
+  lx.beginPath();
+  lx.moveTo(-W * 0.25, cy);
+  lx.quadraticCurveTo(W / 2, cy - up * 2, W * 1.25, cy);
+  lx.quadraticCurveTo(W / 2, cy + dn * 2, -W * 0.25, cy);
+  lx.fill();
+  lx.globalCompositeOperation = 'source-over'; lx.shadowBlur = 0;
+}
+
+/* ───────── behind the eyes: eighteen lights, heard where they are seen ───────── */
+const HALOS = Array.from({ length: 18 }, (_, i) => ({
+  x: i ? (hr() - 0.5) * 0.9 : 0.05, y: i ? (hr() - 0.5) * 0.78 : 0.06,
+  r: i ? lerp(0.035, 0.22, hr() ** 1.5) : 0.03, soft: i ? lerp(0.004, 0.07, hr()) : 0.03,
+  kind: i ? hr() : 0.9, warm: hr() < 0.8 ? 0.75 + hr() * 0.25 : hr() * 0.3,
+  at: i ? 0.418 + (i / 18) * 0.16 + hr() * 0.006 : 0.41, ph: hr() * 6.28, sp: 0.4 + hr() * 0.8,
+}));
+const haloState = HALOS.map(() => ({ x: 0, appear: 0, flick: 0 }));
+function haloFrame(p, t, aspect) {
+  const build = V.build(p), grow = 1 + 0.6 * smooth(0.56, 0.6, p), out = 1 - smooth(0.6, 0.6025, p);
+  HALOS.forEach((h, i) => {
+    const appear = smooth(h.at, h.at + 0.014, p) * out, flick = 0.72 + 0.28 * Math.sin(t * (0.35 + h.sp * 0.3) + h.ph * 3);
+    const cx = h.x * aspect + Math.sin(t * 0.05 * h.sp + h.ph) * 0.05, cy = h.y + Math.cos(t * 0.043 * h.sp + h.ph * 1.3) * 0.04;
+    HA[i].set(cx, cy, h.r * grow, h.soft * (0.75 + 0.25 * grow));
+    HB[i].set(h.kind, appear * build, h.warm, flick);
+    Object.assign(haloState[i], { x: cx / Math.max(aspect * 0.5, 0.2), appear, flick });
+  });
+  return haloState;
+}
+
+/* ───────── the body keeps time: heart and breath ───────── */
+const BODY = { hb: 0, br: 0, beat: 0, breath: 0 };
+function bodyStep(B, dt, p) {
+  const bpm = p < 0.3 ? 62 : p < 0.56 ? 58 : p < 0.61 ? lerp(58, 76, smooth(0.56, 0.6, p)) : p > 0.97 ? 44 : 56;
+  let lub = false, inhale = false;
+  B.hb += (dt * bpm) / 60; if (B.hb >= 1) { B.hb -= 1; lub = true; }
+  const bt = (B.hb * 60) / bpm;
+  B.beat = Math.exp(-bt * 9) + (bt > 0.3 ? 0.55 * Math.exp(-(bt - 0.3) * 9) : 0);
+  const per = p > 0.56 && p < 0.61 ? 4.2 : p > 0.95 ? 8.5 : 6.5;
+  B.br += dt / per; if (B.br >= 1) { B.br -= 1; inhale = true; }
+  B.breath = B.br < 0.38 ? smooth(0, 0.38, B.br) : 1 - smooth(0.46, 0.95, B.br);
+  return { lub, inhale, per };
+}
+
+/* ───────── sound: a mix that the scroll performs ───────── */
+const L = { // levels and colours of each layer, by scroll position
+  ext: track([[0, 0.9], [0.1, 0.85], [0.14, 0.35], [0.165, 0], [0.866, 0], [0.885, 1], [0.93, 0.95], [0.975, 0]]),
+  extLP: xtrack([[0, 16000], [0.07, 15000], [0.11, 2400], [0.135, 500], [0.16, 220], [0.866, 300], [0.89, 16000], [0.915, 14000], [0.965, 1100], [1, 500]]),
+  extW: track([[0, 1.25], [0.12, 0.7], [0.16, 0.4], [0.866, 0.5], [0.89, 1.3], [0.97, 0.6]]),
+  heart: track([[0.125, 0], [0.145, 1], [0.2, 0.9], [0.25, 0.15], [0.3, 0], [0.54, 0], [0.58, 0.5], [0.6, 0.7], [0.602, 0], [0.975, 0], [0.99, 0.25]]),
+  blood: track([[0.13, 0], [0.15, 1], [0.2, 0.8], [0.25, 0]]),
+  breath: track([[0.24, 0], [0.3, 0.35], [0.37, 0.5], [0.42, 0.8], [0.56, 1], [0.6, 1], [0.602, 0], [0.955, 0], [0.985, 0.45]]),
+  void: track([[0.2, 0], [0.245, 1], [0.3, 0.8], [0.37, 0.5], [0.41, 0.15], [0.45, 0], [0.96, 0], [0.99, 0.3]]),
+  after: track([[0.3, 0], [0.335, 1], [0.37, 0.7], [0.405, 0]]),
+  inner: track([[0.4, 0], [0.425, 0.15], [0.46, 0.35], [0.52, 0.55], [0.57, 0.75], [0.598, 1], [0.6005, 1], [0.6025, 0]]),
+  padOut: track([[0.62, 0], [0.66, 0.22], [0.76, 0.18], [0.8, 0], [0.955, 0], [0.985, 0.14]]),
+  innerW: track([[0.4, 0.15], [0.45, 0.3], [0.5, 0.8], [0.56, 1.2], [0.598, 1.7], [0.605, 1], [0.955, 1], [1, 0.35]]),
+  padF: xtrack([[0.4, 140], [0.45, 260], [0.5, 480], [0.56, 800], [0.59, 1800], [0.599, 5000], [0.603, 300], [0.66, 420], [1, 300]]),
+  swell: track([[0.555, 0], [0.595, 0.16], [0.6, 0.25], [0.6015, 0]]),
+  swellF: xtrack([[0.555, 250], [0.6, 3500]]),
+  sub: track([[0.56, 0], [0.598, 0.2], [0.6015, 0]]),
+  grain: track([[0.44, 0], [0.48, 2], [0.53, 6], [0.57, 16], [0.598, 48], [0.601, 0]]),
+  mem: track([[0.6, 0], [0.625, 0.8], [0.705, 1], [0.76, 0.5], [0.79, 0]]),
+  memGrain: track([[0.72, 0], [0.745, 8], [0.775, 4], [0.8, 0]]),
+  time: track([[0.78, 0], [0.8, 0.7], [0.85, 1], [0.868, 0]]),
+  timeChord: track([[0.81, 0], [0.845, 1], [0.866, 0]]),
+  end: track([[0.95, 0], [0.975, 0.8], [0.99, 1]]),
+  endW: track([[0.95, 1], [1, 0.3]]),
+  birds: track([[0, 1], [0.1, 0.6], [0.12, 0], [0.88, 0], [0.9, 1], [0.925, 0.3], [0.94, 0]]),
+  rush: track([[0, 1], [0.2, 0.6], [0.24, 0.2], [0.4, 0.3], [0.45, 1], [0.955, 1], [0.975, 0.2]]),
+};
+const CH = {
+  fifth: [73.42, 110, 146.83, 220, 146.83, 110],
+  dm9: [73.42, 110, 174.61, 220, 261.63, 329.63],
+  bb: [58.27, 87.31, 146.83, 174.61, 220, 261.63],
+  gm: [49.0, 73.42, 116.54, 174.61, 220, 293.66],
+  peak: [73.42, 110, 185.0, 220, 329.63, 369.99],
+  sus: [73.42, 110, 164.81, 220, 293.66, 329.63],
+};
+const chordAt = (p) => (p < 0.45 ? 'fifth' : p < 0.49 ? 'dm9' : p < 0.53 ? 'bb' : p < 0.575 ? 'gm' : p < 0.62 ? 'peak' : p < 0.8 ? 'dm9' : p < 0.95 ? 'fifth' : 'sus');
+// a motif for the room, in D: [beat, midi note, velocity], sixteen beats
+const MOTIF = [
+  [0, 50, 0.45], [0, 69, 0.5], [1, 65, 0.42], [2, 64, 0.4],
+  [4, 46, 0.42], [4, 62, 0.45], [5, 65, 0.42], [6, 69, 0.48], [7.5, 67, 0.36],
+  [8, 53, 0.44], [8, 60, 0.42], [9, 64, 0.44], [10, 69, 0.5],
+  [12, 48, 0.42], [12, 55, 0.38], [13, 62, 0.44], [14, 64, 0.42], [15, 62, 0.46],
+];
+const mf = (m) => 440 * 2 ** ((m - 69) / 12);
+
+function makeSound(ctx) {
+  const sr = ctx.sampleRate;
+  const G = (v = 0) => { const g = ctx.createGain(); g.gain.value = v; return g; };
+  const F = (type, f, q = 0.707) => { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; };
+  const P = (x = 0) => { const p = ctx.createStereoPanner(); p.pan.value = x; return p; };
+  const osc = (f, type = 'sine') => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; o.start(); return o; };
+  const chain = (...n) => { for (let i = 0; i < n.length - 1; i++) n[i].connect(n[i + 1]); return n[n.length - 1]; };
+  const lfo = (f, depth, param) => chain(osc(f), G(depth), param);
+  // follow a value smoothly, and only when it has actually moved
+  const set = (param, v, at, tc = 0.12) => { if (param._v !== undefined && Math.abs(param._v - v) < Math.abs(v) * 0.004 + 1e-5) return; param._v = v; param.setTargetAtTime(v, at, tc); };
+
+  const noiseBuf = ctx.createBuffer(2, sr * 4, sr);
+  for (let c = 0; c < 2; c++) { const d = noiseBuf.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = R() * 2 - 1; }
+  const nsrc = (at = 0) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(at, R() * 3); return s; };
+  const mono = () => { const g = ctx.createGain(); g.channelCount = 1; g.channelCountMode = 'explicit'; return g; };
+  function ir(sec, decay, pre, dark, early) {
+    const n = Math.floor(sec * sr), b = ctx.createBuffer(2, n, sr), p0 = Math.floor(pre * sr);
+    for (let c = 0; c < 2; c++) {
+      const d = b.getChannelData(c); let lp = 0;
+      for (let i = p0; i < n; i++) {
+        const t = (i - p0) / (n - p0);
+        lp += (R() * 2 - 1 - lp) * (0.95 - dark * 0.85 * Math.sqrt(t));
+        d[i] = lp * (1 - t) ** decay * Math.min(1, (i - p0) / (sr * 0.03));
+      }
+      if (early) for (let j = 0; j < 9; j++) d[p0 + Math.floor((0.004 + R() * 0.07) * sr)] += (R() - 0.5) * 0.9 * (1 - j / 9);
+    }
+    return b;
+  }
+
+  const out = G(0);
+  const glue = ctx.createDynamicsCompressor(); glue.threshold.value = -20; glue.knee.value = 10; glue.ratio.value = 2.5; glue.attack.value = 0.02; glue.release.value = 0.3;
+  const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -4; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.15;
+  chain(out, glue, lim, ctx.destination);
+  const vRoom = ctx.createConvolver(); vRoom.buffer = ir(2.2, 3.2, 0.012, 0.6, true); chain(vRoom, G(0.6), out);
+  const vHall = ctx.createConvolver(); vHall.buffer = ir(9, 2.2, 0.05, 0.9, false); chain(vHall, G(0.85), out);
+  function width() { // mid/side: 0 is mono, 1 as it is, above 1 wider
+    const inp = G(1), sp = ctx.createChannelSplitter(2), mg = ctx.createChannelMerger(2), ll = G(1), lr = G(0), rl = G(0), rr = G(1);
+    inp.channelCount = 2; inp.channelCountMode = 'explicit';
+    inp.connect(sp); sp.connect(ll, 0); sp.connect(lr, 0); sp.connect(rl, 1); sp.connect(rr, 1);
+    ll.connect(mg, 0, 0); rl.connect(mg, 0, 0); lr.connect(mg, 0, 1); rr.connect(mg, 0, 1);
+    return { inp, out: mg, set(w, at) { const a = 0.5 + 0.5 * w, b = 0.5 - 0.5 * w; set(ll.gain, a, at, 0.25); set(rr.gain, a, at, 0.25); set(lr.gain, b, at, 0.25); set(rl.gain, b, at, 0.25); } };
+  }
+  function bus(room, hall, wide) {
+    const b = { in: G(1), g: G(0) };
+    const W = wide ? width() : null;
+    b.in.connect(b.g);
+    const tail = W ? (b.g.connect(W.inp), W.out) : b.g;
+    tail.connect(out); tail.connect(G(room)).connect(vRoom); tail.connect(G(hall)).connect(vHall);
+    b.W = W;
+    return b;
+  }
+  const EXT = bus(0.38, 0.05, true), BODYB = bus(0.12, 0.05, false), VOID = bus(0.1, 0.35, false), AFTER = bus(0.1, 0.6, false);
+  const INNER = bus(0.05, 0.65, true), MEM = bus(0.3, 0.5, false), TIME = bus(0.3, 0.2, false), END = bus(0.1, 0.6, true);
+  const extIn = G(1), extLP = F('lowpass', 16000, 0.5); chain(extIn, extLP, EXT.in);
+
+  // the outside: air in the room, wind in the trees, the city far away
+  chain(nsrc(), F('bandpass', 2400, 0.4), G(0.03), extIn);
+  const windF = F('bandpass', 900, 0.6), windG = G(0.05); chain(nsrc(), windF, windG, extIn);
+  chain(nsrc(), F('lowpass', 110, 0.6), G(0.12), extIn);
+  // the body: blood, heart, breath, all in the middle of the head
+  const heartG = G(0), bloodLvl = G(0), breathLvl = G(0);
+  chain(heartG, BODYB.in); chain(bloodLvl, BODYB.in); chain(breathLvl, BODYB.in);
+  BODYB.g.gain.value = 1;
+  const bloodG = G(0.25); chain(nsrc(), mono(), F('lowpass', 150, 0.6), F('lowpass', 220, 0.6), bloodG, bloodLvl);
+  const brIn = mono(), br1 = F('bandpass', 850, 0.9), br2 = F('bandpass', 2300, 1.4), brHP = F('highpass', 260, 0.5), brG = G(0);
+  chain(nsrc(), brIn); brIn.connect(br1); brIn.connect(br2); br1.connect(brHP); chain(br2, G(0.5), brHP); chain(brHP, brG, G(0.35), breathLvl);
+  // silence has a sound: a little hiss, a little pressure
+  chain(nsrc(), F('highpass', 6500, 0.5), G(0.012), VOID.in);
+  chain(nsrc(), mono(), F('lowpass', 60, 0.6), F('lowpass', 80, 0.6), G(0.15), VOID.in);
+  // the afterimage: two thin tones, slowly beating
+  const afO = [osc(880), osc(883.4)]; afO.forEach((o) => chain(o, G(0.012), AFTER.in));
+  // behind the eyes: a harmony that moves, glass for each light, grains of it
+  const padF = F('lowpass', 200, 0.7); chain(padF, G(1), INNER.in);
+  const pad = Array.from({ length: 6 }, (_, i) => {
+    const a = osc(110, 'sawtooth'), b = osc(110, 'triangle'), g = G(0.09);
+    a.detune.value = -5 + J(3); b.detune.value = 6 + J(3);
+    chain(a, G(0.3), g); chain(b, G(0.7), g); lfo(0.05 + i * 0.017, 0.035, g.gain);
+    chain(g, P(-0.75 + i * 0.3), padF);
+    return { a, b };
+  });
+  const tones = Array.from({ length: 10 }, () => {
+    const o1 = osc(440), o2 = osc(440 * 2.76), g = G(0), pn = P(0);
+    o1.connect(g); chain(o2, G(0.12), g); chain(g, pn, INNER.in);
+    return { o1, o2, g, pn };
+  });
+  const swF = F('bandpass', 300, 2.2), swG = G(0); chain(nsrc(), swF, swG, INNER.in);
+  const subG = G(0); chain(osc(36.71), subG, out);
+  // memory: the room's own sound, played back slightly wrong
+  const wowD = ctx.createDelay(0.5); wowD.delayTime.value = 0.05; lfo(0.4, 0.006, wowD.delayTime); lfo(5.3, 0.0008, wowD.delayTime);
+  chain(extIn, wowD, F('bandpass', 1100, 0.55), G(1.8), MEM.in);
+  const wow = G(9), flut = G(2.5); chain(osc(0.35), wow); chain(osc(5.2), flut);
+  // the count: a low floor of sound
+  const tChordG = G(0); [36.71, 55, 73.42].forEach((f) => chain(osc(f), G(0.06), tChordG)); chain(tChordG, TIME.in);
+  // the last light has a voice
+  const endO = osc(587.33); lfo(0.2, 2, endO.frequency); chain(endO, G(0.02), END.in); chain(osc(293.66), G(0.008), END.in);
+  let endDim = 1;
+  // the air your scrolling moves
+  const rushF = F('bandpass', 500, 0.7), rushG = G(0); chain(nsrc(), rushF, rushG, out);
+
+  const hann = Float32Array.from({ length: 64 }, (_, i) => Math.sin((Math.PI * i) / 63) ** 2);
+  function grain(at, f, dur, amp, pan, dest) {
+    const o = ctx.createOscillator(), g = G(0), a = G(amp);
+    o.frequency.value = f; g.gain.setValueCurveAtTime(hann, at, dur);
+    chain(o, g, a, P(clamp(pan, -1, 1)), dest); o.start(at); o.stop(at + dur + 0.02);
+  }
+  function pianoNote(f, v, at, dest, o = {}) {
+    const dur = (2.6 + 220 / f) * (o.ring || 1), att = o.swell ? 0.7 : 0.008 + (1 - v) * 0.01;
+    const g = G(0), lp = F('lowpass', 1000, 0.4);
+    lp.frequency.setValueAtTime(o.dark ? 1400 : 2200 + v * 2200, at); lp.frequency.setTargetAtTime(o.dark ? 520 : 700, at + 0.03, 0.6);
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(v * 0.2, at + att); g.gain.setTargetAtTime(0, at + att, dur / 5);
+    for (const [m, a] of [[1, 1], [2.002, 0.32], [3.006, 0.13], [4.015, 0.05]]) {
+      const oo = ctx.createOscillator(), pg = G(a);
+      oo.frequency.value = f * m;
+      if (o.wow) { wow.connect(oo.detune); flut.connect(oo.detune); oo.onended = () => { wow.disconnect(oo.detune); flut.disconnect(oo.detune); }; }
+      if (m > 1) pg.gain.setTargetAtTime(0, at + att, dur / (3 + m * 3));
+      chain(oo, pg, lp); oo.start(at); oo.stop(at + dur + 0.2);
+    }
+    chain(lp, g, P(clamp(Math.log2(f / 262) * 0.3, -0.5, 0.5)), dest);
+  }
+  function bird(at) {
+    const pn = ctx.createPanner();
+    pn.panningModel = COARSE ? 'equalpower' : 'HRTF';
+    const px = -2 - R() * 3, py = 1 + R(), pz = -4 - R() * 4;
+    if (pn.positionX) { pn.positionX.value = px; pn.positionY.value = py; pn.positionZ.value = pz; } else pn.setPosition(px, py, pz);
+    chain(pn, extIn);
+    const n = 2 + ((R() * 3) | 0), base = 2300 + R() * 1500, gap = 0.1 + R() * 0.08;
+    for (let i = 0; i < n; i++) {
+      const t = at + i * gap, o = ctx.createOscillator(), e = G(0);
+      o.frequency.setValueAtTime(base * 0.9, t); o.frequency.exponentialRampToValueAtTime(base * (1.1 + R() * 0.15), t + 0.05); o.frequency.exponentialRampToValueAtTime(base * 0.97, t + 0.09);
+      e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(0.02, t + 0.01); e.gain.linearRampToValueAtTime(0, t + 0.09);
+      chain(o, e, pn); o.start(t); o.stop(t + 0.1);
+    }
+  }
+  function boom(at) {
+    const o = ctx.createOscillator(), g = G(0);
+    o.frequency.setValueAtTime(62, at); o.frequency.exponentialRampToValueAtTime(28, at + 2.5);
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.4, at + 0.02); g.gain.setTargetAtTime(0, at + 0.05, 0.9);
+    chain(o, g, out); g.connect(G(0.5)).connect(vHall); o.start(at); o.stop(at + 4);
+  }
+
+  // the piano keeps its own time; the scroll decides how it plays
+  let pt = -1, ph = 0, lastNote = false, prevP = 0, chordNow = '', grainAcc = 0, memAcc = 0, boomed = false, gustAt = 0;
+  function playNote(mode, m, v, t) {
+    const bass = m < 55;
+    if (mode === 'room' || mode === 'true') pianoNote(mf(m), v, t + J(0.03), extIn);
+    else if (mode === 'end') { if (bass || R() < 0.7) pianoNote(mf(m), v * 0.85, t + J(0.05), extIn, { ring: 1.4 }); }
+    else if (mode === 'wrong') { // memory plays it almost right
+      if (R() < 0.18) return;
+      const w = !bass && R() < 0.2 ? (R() < 0.5 ? -1 : 1) * (R() < 0.7 ? 1 : 2) : 0;
+      pianoNote(mf(m + w), v * 0.9, t + J(0.14), MEM.in, { wow: 1, dark: 1 });
+    } else if (mode === 'fade') { if (R() < 0.5) return; pianoNote(mf(m + (bass ? 0 : 12)), v * 0.5, t + J(0.2), MEM.in, { wow: 1, swell: 1, dark: 1 }); }
+  }
+  function piano(p, at) {
+    const mode = p < 0.132 ? 'room' : p >= 0.625 && p < 0.72 ? 'wrong' : p >= 0.72 && p < 0.79 ? 'fade' : p >= 0.874 && p < 0.955 ? (p < 0.9 ? 'true' : 'end') : null;
+    const beat = mode === 'end' ? lerp(60 / 58, 60 / 34, smooth(0.9, 0.955, p)) : mode === 'wrong' ? 60 / 54 : 60 / 58;
+    if (pt < at) pt = at + 0.05;
+    while (pt < at + 0.3) {
+      const b = (ph % 32) / 2;
+      if (mode) for (const [ob, m, v] of MOTIF) if (ob === b) playNote(mode, m, v, pt);
+      pt += beat / 2; ph++;
+    }
+    if (!lastNote && prevP < 0.955 && p >= 0.955) { lastNote = true; pianoNote(mf(62), 0.42, at + 0.1, extIn, { ring: 1.8 }); pianoNote(mf(57), 0.3, at + 0.1, extIn, { ring: 1.8 }); }
+    if (p < 0.9) lastNote = false;
+  }
+
+  return {
+    ctx,
+    fade(on, at = ctx.currentTime) { out.gain.cancelScheduledValues(at); out.gain.setTargetAtTime(on ? 0.9 : 0, at, on ? 0.8 : 0.25); },
+    dim(v) { endDim = v; },
+    thump(at, amp) {
+      const o = ctx.createOscillator(), g = G(0);
+      o.frequency.setValueAtTime(58, at); o.frequency.exponentialRampToValueAtTime(33, at + 0.18);
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(amp, at + 0.018); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.3);
+      chain(o, g, heartG); o.start(at); o.stop(at + 0.35);
+      const s = nsrc(at), cg = G(0);
+      cg.gain.setValueAtTime(0.0001, at); cg.gain.exponentialRampToValueAtTime(amp * 0.35, at + 0.006); cg.gain.exponentialRampToValueAtTime(0.0001, at + 0.06);
+      chain(s, F('lowpass', 380, 0.7), cg, heartG); s.stop(at + 0.1);
+      bloodG.gain.setTargetAtTime(0.45, at, 0.02); bloodG.gain.setTargetAtTime(0.25, at + 0.1, 0.25);
+    },
+    breath(at, per) {
+      const inh = per * 0.38, exh = per * 0.45, a = at + inh;
+      brG.gain.cancelScheduledValues(at); brG.gain.setValueAtTime(0, at);
+      brG.gain.linearRampToValueAtTime(0.5, a); brG.gain.linearRampToValueAtTime(0.02, a + 0.45);
+      brG.gain.linearRampToValueAtTime(0.4, a + 0.85); brG.gain.setTargetAtTime(0, a + 0.9, exh / 3);
+      br1.frequency.cancelScheduledValues(at); br1.frequency.setValueAtTime(700, at); br1.frequency.linearRampToValueAtTime(1000, a);
+      br1.frequency.setValueAtTime(820, a + 0.5); br1.frequency.linearRampToValueAtTime(560, a + 0.9 + exh);
+    },
+    tick(at) {
+      const s = nsrc(at), g = G(0);
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.06, at + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.03);
+      chain(s, F('bandpass', 3200, 3), g, TIME.in); s.stop(at + 0.05);
+    },
+    step(p, vel, at, dt, halos) {
+      const sp = Math.min(1, Math.abs(vel) * 8);
+      set(EXT.g.gain, L.ext(p), at, 0.15); set(extLP.frequency, L.extLP(p), at, 0.1); EXT.W.set(L.extW(p), at);
+      if (at > gustAt) { gustAt = at + 1.5 + R() * 2.5; set(windG.gain, 0.02 + R() * 0.07, at, 1.2); set(windF.frequency, 700 + R() * 900, at, 1.5); }
+      set(heartG.gain, L.heart(p), at, 0.2); set(bloodLvl.gain, L.blood(p), at, 0.2); set(breathLvl.gain, L.breath(p), at, 0.3);
+      set(VOID.g.gain, L.void(p), at, 0.3); set(AFTER.g.gain, L.after(p), at, 0.3);
+      afO.forEach((o, i) => set(o.frequency, (880 + i * 3.4) * (1 - 0.06 * smooth(0.37, 0.405, p)), at, 0.4));
+      set(INNER.g.gain, Math.max(L.inner(p), L.padOut(p)), at, 0.12); INNER.W.set(L.innerW(p), at);
+      set(padF.frequency, L.padF(p) * (1 + sp * 0.8), at, 0.15);
+      set(swG.gain, L.swell(p), at, 0.1); set(swF.frequency, L.swellF(p), at, 0.2); set(subG.gain, L.sub(p), at, 0.1);
+      set(MEM.g.gain, L.mem(p), at, 0.2); set(TIME.g.gain, L.time(p), at, 0.2); set(tChordG.gain, L.timeChord(p), at, 0.4);
+      set(END.g.gain, L.end(p) * endDim, at, 0.6); END.W.set(L.endW(p), at);
+      set(rushF.frequency, 380 + sp * 4200, at, 0.08); set(rushG.gain, Math.min(0.05, sp * 0.06) * L.rush(p), at, 0.08);
+      const ch = chordAt(p);
+      if (ch !== chordNow) { chordNow = ch; CH[ch].forEach((f, i) => { set(pad[i].a.frequency, f, at, 1.3); set(pad[i].b.frequency, f, at, 1.3); }); }
+      const cf = CH[chordNow];
+      halos.forEach((h, i) => {
+        if (i >= tones.length) return;
+        const t = tones[i], f = cf[i % 6] * 4;
+        set(t.g.gain, h.appear * h.flick * 0.012, at, 0.35); set(t.pn.pan, clamp(h.x, -0.95, 0.95), at, 0.4);
+        set(t.o1.frequency, f, at, 1.1); set(t.o2.frequency, f * 2.76, at, 1.1);
+      });
+      grainAcc += dt * (L.grain(p) + (L.inner(p) > 0.2 ? sp * 14 : 0));
+      while (grainAcc >= 1) { grainAcc--; grain(at + R() * 0.06, cf[(R() * 6) | 0] * (R() < 0.5 ? 4 : 8), 0.05 + R() * 0.12, 0.01 + R() * 0.02, J(1.8), INNER.in); }
+      memAcc += dt * L.memGrain(p);
+      while (memAcc >= 1) { memAcc--; grain(at + R() * 0.1, CH.dm9[(R() * 6) | 0] * (R() < 0.5 ? 2 : 4), 0.08 + R() * 0.25, 0.02 + R() * 0.02, J(1.6), MEM.in); }
+      if (L.birds(p) > 0.3 && R() < dt * 0.25) bird(at + R() * 0.2);
+      // after the brightest moment: one deep fall, then nothing
+      if (!boomed && prevP < 0.6012 && p >= 0.6012) { boomed = true; boom(at); }
+      if (p < 0.59) boomed = false;
+      piano(p, at);
+      prevP = p;
+    },
+  };
+}
+
+/* ───────── threshold and sound switch ───────── */
+let sound = null, soundOn = false, enterReq = 0, enterAt = -1, unlocked = false;
+const sndT = $('#snd-t'), snd = $('#snd');
+function showSound() { snd.setAttribute('aria-pressed', soundOn); sndT.textContent = soundOn ? 'sound on' : 'sound off'; }
+function soundStart() {
+  if (!sound) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; sound = makeSound(new AC()); }
+  sound.ctx.resume(); sound.fade(1); soundOn = true; showSound();
+}
+function soundStop() { if (sound) sound.fade(0); soundOn = false; showSound(); }
+$('#loud').addEventListener('click', () => { soundStart(); enterReq = enterReq || 1; });
+$('#silent').addEventListener('click', () => { enterReq = enterReq || 1; });
+snd.addEventListener('click', () => (soundOn ? soundStop() : soundStart()));
+document.addEventListener('visibilitychange', () => { if (sound && soundOn) document.hidden ? sound.ctx.suspend() : sound.ctx.resume(); });
+
+/* ───────── frame ───────── */
+const tcEl = $('#tc'), phEl = $('#ph'), railI = $('#rail i'), root = document.documentElement;
+const camPos = new THREE.CatmullRomCurve3(CAM.map((k) => new THREE.Vector3(...k[1])), false, 'centripetal');
+const camTgt = new THREE.CatmullRomCurve3(CAM.map((k) => new THREE.Vector3(...k[2])), false, 'centripetal');
+const camU = linear(CAM.map((k, i) => [k[0], i / (CAM.length - 1)]));
+// scroll → score: each moment gets scroll distance in proportion to how much happens in it,
+// so a short transition is never a jolt and a long hold never a crawl
+const WARP = (() => {
+  const n = 1600, h = 1 / n, tracks = Object.values(V), at = new THREE.Vector3(), prevCam = new THREE.Vector3();
+  const span = tracks.map((f) => { let lo = 1e9, hi = -1e9; for (let i = 0; i <= n; i += 8) { const v = f(i * h); lo = Math.min(lo, v); hi = Math.max(hi, v); } return hi - lo || 1; });
+  const act = new Float64Array(n);
+  camPos.getPoint(camU(0), prevCam);
+  for (let i = 0; i < n; i++) {
+    const p = (i + 0.5) * h;
+    let a = 0;
+    tracks.forEach((f, k) => (a += Math.abs(f(p + h / 2) - f(p - h / 2)) / span[k] / h));
+    const fi = FORM.findIndex((f) => p < f[0]), f = FORM[fi], p0 = fi ? FORM[fi - 1][0] : 0;
+    if (f[1] !== f[2]) a += 2 / (f[0] - p0);
+    for (const T of TEXTS) if (p > T.r[0] && p < T.r[1]) a += 1 / (T.r[1] - T.r[0]);
+    camPos.getPoint(camU((i + 1) * h), at);
+    a += (at.distanceTo(prevCam) / h / 40) * V.fade(p); // camera moves only count when something is visible
+    prevCam.copy(at);
+    act[i] = a;
+  }
+  const W = 14, sm = new Float64Array(n);
+  for (let i = 0; i < n; i++) { let t = 0, k = 0; for (let j = Math.max(0, i - W); j <= Math.min(n - 1, i + W); j++) { t += act[j]; k++; } sm[i] = t / k; }
+  const mean = sm.reduce((t, v) => t + v, 0) / n, cum = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) cum[i + 1] = cum[i] + 0.6 + Math.min(sm[i] / mean, 4); // a floor, so quiet moments still take their time
+  for (let i = 0; i <= n; i++) cum[i] /= cum[n];
+  return {
+    p(s) { let lo = 0, hi = n; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; } return (lo + clamp((s - cum[lo]) / (cum[hi] - cum[lo] || 1), 0, 1)) * h; },
+    s(p) { const x = clamp(p, 0, 1) * n, i = Math.min(n - 1, Math.floor(x)); return lerp(cum[i], cum[i + 1], x - i); },
+  };
+})();
+const vA = new THREE.Vector3(), vB = new THREE.Vector3(), m4 = new THREE.Matrix4(), eul = new THREE.Euler();
+const win0 = new THREE.Vector2(), win1 = new THREE.Vector2(0.1, 0.15);
+const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
+addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') { mouse.x = e.clientX / innerWidth - 0.5; mouse.y = e.clientY / innerHeight - 0.5; } });
+
+let P = 0, pv = 0, vel = 0, time = 0, last = performance.now(), lastW = 0, lastH = 0, inkNow = -1, hudNow = -1, lastScroll = 0, tickAcc = 0, lastTc = '', pres = 0, endAt = -1;
+let arrived = 0;
+const blinksSince = () => Math.max(1, Math.round(((performance.now() - arrived) / 60000) * 17));
+const tanH = () => Math.tan((camera.fov * Math.PI) / 360);
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  if (w === lastW && Math.abs(h - lastH) < 140) return; // ignore the mobile toolbar sliding
+  lastW = w; lastH = h;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.fov = camera.aspect >= 1 ? 45 : Math.min(75, (2 * Math.atan(Math.tan((25 * Math.PI) / 180) / camera.aspect) * 180) / Math.PI);
+  camera.updateProjectionMatrix();
+  lidC.width = Math.ceil(w / 3); lidC.height = Math.ceil(h / 3);
+  BG.uAspect.value = camera.aspect;
+  PU.uHalfW.value = tanH() * camera.aspect; PU.uHalfH.value = tanH();
+  PU.uGlyph.value.x = camera.aspect >= 1 ? -1.25 : 0;
+  PU.uGlyph.value.y = camera.aspect >= 1 ? 0 : 0.7;
+  PU.uBeamH.value = camera.aspect >= 1 ? 0.26 : 0.15;
+}
+addEventListener('resize', resize);
+resize();
+
+// a line of words fixed to the eye must still fit the screen
+const fitView = (h, row, z) => Math.min(h, (tanH() * camera.aspect * -z * 2 * 0.88) / (12.8 * Math.max(rowW[row], 0.05)));
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now; time += dt;
+  if (enterReq === 1) { enterReq = 2; enterAt = time; arrived = performance.now(); $('#gate').classList.add('gone'); }
+  const wT = enterAt < 0 ? -1 : time - enterAt;
+  if (wT > 2.9 && !unlocked) { unlocked = true; root.classList.add('in'); }
+
+  // the scroll, given a little weight
+  const max = Math.max(1, root.scrollHeight - innerHeight);
+  const target = WARP.p(clamp(scrollY / max, 0, 1)), prev = P;
+  // a critically damped spring: the picture eases into motion and out of it, never jumps
+  const w = REDUCED ? 12 : 6;
+  pv += (w * w * (target - P) - 2 * w * pv) * dt;
+  P = clamp(P + pv * dt, 0, 1);
+  vel = lerp(vel, (P - prev) / Math.max(dt, 1e-3), 0.1);
+  const p = P, sp = Math.min(Math.abs(vel) * 6, 1);
+  // Troxler: hold still, and the inner lights fade a little
+  pres = lerp(pres, Math.min(1, Math.abs(vel) * 25), dt * (Math.abs(vel) > 0.002 ? 2 : 0.3));
+  const trox = V.inner(p) > 0 ? lerp(0.55, 1, pres) : 1;
+
+  // camera
+  const u = camU(p);
+  camPos.getPoint(u, vA); camTgt.getPoint(u, vB);
+  mouse.sx = lerp(mouse.sx, mouse.x, 0.04); mouse.sy = lerp(mouse.sy, mouse.y, 0.04);
+  const sway = REDUCED ? 0 : 1;
+  vA.x += (mouse.sx * 0.25 + Math.sin(time * 0.31) * 0.03) * sway;
+  vA.y += (-mouse.sy * 0.12 + Math.sin(time * 0.23) * 0.02) * sway;
+  camera.position.copy(vA); camera.lookAt(vB);
+  camera.updateMatrixWorld();
+
+  const ev = bodyStep(BODY, dt, p);
+  const halos = haloFrame(p, time, camera.aspect);
+
+  // the room and its light
+  const gateOn = wT < 1.1, lidK = V.lid(p);
+  const room = gateOn ? 0 : V.room(p);
+  roomParts.forEach((m) => (m.visible = room > 0.002));
+  RU.uRoom.value = room;
+  const boot = wT < 1.1 ? 1 : 1 + 3.2 * Math.exp(-(wT - 1.1) * 1.3); // eyes adjusting to daylight
+  RU.uExpo.value = boot * (1 - 0.85 * lidK); // less light reaches the eye as the lids close
+  RU.uSat.value = V.sat(p); RU.uTime.value = BG.uTime.value = PU.uTime.value = time;
+  const se = V.sunEnd(p), sunI = V.sunI(p);
+  SUNU.value.set(0.45 - 0.07 * V.sunRoom(p) + 0.12 * se, -0.42 + 0.14 * se, 1);
+  if (room > 0.002) updateBeams(SUNU.value.x, SUNU.value.y);
+  RU.uSunI.value = PU.uSunI.value = sunI;
+  RU.uSunCol.value.set(1.9, lerp(1.7, 1.05, se), lerp(1.38, 0.6, se));
+  RU.uDusk.value = V.dusk(p); RU.uFlat.value = V.flat(p); RU.uGlass.value = V.glass(p);
+  RU.uWallA.value = V.wallA(p); RU.uWallB.value = V.wallB(p);
+
+  // the dark states
+  BG.uRed.value = V.red(p); BG.uBeat.value = BODY.beat; BG.uBreath.value = BODY.breath;
+  const lt = (a, b) => (p - a) / (b - a), ao = (l) => [smooth(0, 0.38, l), smooth(0.7, 1, l)];
+  BG.uLid1.value.set(...ao(lt(0.15, 0.2))); BG.uLid2.value.set(...ao(lt(0.172, 0.236)));
+  BG.uGrey.value = gateOn ? 1 : V.grey(p); BG.uSnow.value = gateOn ? 0.25 : V.snow(p);
+  BG.uSnowT.value.set(...ao(lt(0.252, 0.33)));
+  BG.uAfter.value = V.after(p);
+  BG.uInner.value = V.inner(p); BG.uRings.value = V.rings(p); BG.uBloom.value = V.bloom(p); BG.uTrox.value = trox;
+  BG.uApp.value.set(V.appA(p), V.appB(p), V.appC(p));
+  BG.uMem.value = V.mem(p);
+
+  // one light: the threshold's, then the window's at the very end
+  if (gateOn) {
+    const k = wT < 0 ? 0 : smooth(0, 1.1, wT) ** 2;
+    BG.uGlowI.value = 0.55 + 0.9 * k; BG.uGlowMorph.value = 1;
+    BG.uGlowPos.value.set(0, lerp(0.08, 0, k)); BG.uGlowSize.value.set(lerp(0.012, 0.9, k), lerp(0.012, 0.004, k));
+  } else {
+    if (p < 0.965) {
+      vB.set(-1.2, 1.9, -6).project(camera); win0.set(vB.x * 0.5 * camera.aspect, vB.y * 0.5);
+      vB.set(-0.4, 3.1, -6).project(camera); win1.set(Math.abs(vB.x * 0.5 * camera.aspect - win0.x), Math.abs(vB.y * 0.5 - win0.y));
+    }
+    const k = V.glowPull(p), dim = endAt >= 0 ? lerp(1, 0.4, smooth(0, 40, time - endAt)) : 1;
+    BG.uGlowI.value = V.glowI(p) * dim; BG.uGlowMorph.value = V.glowMorph(p);
+    BG.uGlowPos.value.set(lerp(win0.x, 0, k), lerp(win0.y, 0.1, k));
+    BG.uGlowSize.value.set(lerp(win1.x, 0.012, k), lerp(win1.y, 0.012, k));
+  }
+  // at the very end, time takes over from the scroll: the words go, the light stays
+  if (p > 0.997 && endAt < 0) endAt = time;
+  if (p < 0.99) endAt = -1;
+  const fadeOut = endAt >= 0 ? smooth(14, 24, time - endAt) : 0;
+  BG.uEnd1.value.set(V.end1(p), fadeOut); BG.uEnd2.value.set(V.end2(p), fadeOut);
+  BG.uSig.value.set(V.sig(p), 0);
+
+  // particles
+  const fi = FORM.findIndex((s) => p < s[0]), f = FORM[fi], p0 = fi ? FORM[fi - 1][0] : 0;
+  PU.uFA.value = f[1]; PU.uFB.value = f[2]; PU.uMix.value = clamp((p - p0) / (f[0] - p0), 0, 1);
+  PU.uRowA.value = f[4] ?? 0; PU.uRowB.value = f[5] ?? 0;
+  PU.uFlight.value = f[3] * (REDUCED ? 0.4 : 1) * (1 + sp);
+  PU.uStag.value = f[1] === 9 && f[2] === 5 ? 1 : 0;
+  PU.uFade.value = (gateOn ? 0 : smooth(1.1, 2.6, wT)) * V.fade(p);
+  PU.uMotes.value = V.motes(p); PU.uBloomR.value = V.bloomR(p); PU.uTrox.value = trox;
+  const textZ = -5;
+  PU.uTextPos.value.set(0, p > 0.7 ? 0.35 : 0.05, textZ);
+  PU.uTextH.value = fitView(p > 0.7 ? 0.3 : 0.34, f[5] ?? f[4] ?? 7, textZ);
+  PU.uGlyph.value.z = V.glyphZ(p);
+  PU.uGlowV.value.set(BG.uGlowPos.value.x * 2 * tanH() * 4, BG.uGlowPos.value.y * 2 * tanH() * 4, -4);
+  eul.set(0.18 * Math.sin(time * 0.13) + (p - 0.34) * 0.6, 0.3 * Math.sin(time * 0.11) + (p - 0.34) * 2.2, 0);
+  PU.uTilt.value.setFromMatrix4(m4.makeRotationFromEuler(eul));
+  PU.uScale.value = renderer.domElement.height / (2 * tanH());
+
+  // words in the space
+  const portrait = camera.aspect < 1;
+  for (const T of TEXTS) {
+    const l = (p - T.r[0]) / (T.r[1] - T.r[0]), on = l > 0 && l < 1 && !gateOn;
+    T.mesh.visible = on;
+    if (!on) continue;
+    const U = T.mesh.material.uniforms, pos = (portrait && T.viewP) || T.view || T.world;
+    U.uAO.value.set(...ao(l));
+    U.uBlur.value = (T.focus ? 0.16 * (1 - smooth(0, 0.42, l)) + 0.1 * smooth(0.72, 1, l) : 0.015) + sp * 0.04;
+    const h = T.view ? fitView(T.h, T.count ? 13 : T.row, pos[2]) : T.h;
+    T.mesh.scale.set(12.8 * h, h, 1);
+    if (T.view) T.mesh.position.set(pos[0], pos[1], pos[2] + 0.5 * l);
+    else { T.mesh.position.set(pos[0], pos[1] + 0.05 * l, pos[2]); if (T.face) T.mesh.quaternion.copy(camera.quaternion); }
+    if (T.count && time - counterAt > 1.5) { counterAt = time; drawCounter(blinksSince()); }
+  }
+
+  // lids: the threshold opening, then the choreographed blink
+  let lid = lidK;
+  if (wT < 0) lid = 1;
+  else if (wT < 1.1) lid = 1;
+  else if (wT < 2.9) lid = Math.max(lid, 0.97 * (1 - (1 - (1 - (wT - 1.1) / 1.8) ** 3)));
+  drawLid(lid, gateOn || wT < 2.9 ? 1 : V.lidWarm(p));
+
+  // the frame's colour follows the light
+  const ink = V.ink(p), hud = V.hud(p);
+  if (Math.abs(ink - inkNow) > 0.002) { inkNow = ink; root.style.setProperty('--ink', `rgb(${[lerp(185, 38, ink), lerp(179, 36, ink), lerp(169, 33, ink)].map(Math.round)})`); }
+  if (Math.abs(hud - hudNow) > 0.01) { hudNow = hud; root.style.setProperty('--hud', hud.toFixed(2)); }
+  const tc = `${CLOCK(p).toFixed(4)} s`;
+  if (tc !== lastTc) { tcEl.textContent = tc; phEl.textContent = PHASE.find((k) => p < k[0])[1]; lastTc = tc; }
+  railI.style.top = `${(p * 100).toFixed(2)}%`;
+
+  // sound follows, a few milliseconds ahead of the eye
+  if (sound && soundOn) {
+    const at = sound.ctx.currentTime + 0.03;
+    sound.dim(endAt >= 0 ? lerp(1, 0.55, smooth(0, 40, time - endAt)) : 1);
+    sound.step(p, vel, at, dt, halos);
+    if (ev.lub && L.heart(p) > 0.02) { sound.thump(at, 0.22); sound.thump(at + 0.3, 0.13); }
+    if (ev.inhale && L.breath(p) > 0.02) sound.breath(at, ev.per);
+    const dy = Math.abs(scrollY - lastScroll);
+    if (p > 0.8 && p < 0.866 && (tickAcc += dy) > 70) { tickAcc = 0; sound.tick(at); }
+  }
+  lastScroll = scrollY;
+
+  renderer.render(scene, camera);
+}
+
+if (location.search.includes('dev')) {
+  window.F = {
+    enter: () => { enterReq = enterReq || 1; },
+    set: (v) => { P = v; pv = 0; scrollTo(0, WARP.s(v) * (root.scrollHeight - innerHeight)); },
+    warp: (v) => WARP.s(v),
+    // render the whole score offline and report its loudness, second by second
+    audioTest: async (T = 180, rate = 24000) => {
+      const octx = new OfflineAudioContext(2, T * rate, rate), s = makeSound(octx), B = { hb: 0, br: 0 }, dt = 0.1;
+      s.fade(1, 0);
+      for (let t = 0; t < T - 0.5; t += dt) {
+        const p = Math.min(1, t / (T * 0.96)), at = t + 0.05, e = bodyStep(B, dt, p);
+        s.step(p, 0.004, at, dt, haloFrame(p, t, 1.6));
+        if (e.lub && L.heart(p) > 0.02) { s.thump(at, 0.22); s.thump(at + 0.3, 0.13); }
+        if (e.inhale && L.breath(p) > 0.02) s.breath(at, e.per);
+      }
+      const buf = await octx.startRendering(), l = buf.getChannelData(0), r = buf.getChannelData(1), rows = [];
+      for (let sec = 0; sec < T; sec += 2) {
+        let sum = 0, pk = 0, side = 0;
+        for (let i = sec * rate; i < Math.min(l.length, (sec + 2) * rate); i++) { sum += l[i] * l[i] + r[i] * r[i]; pk = Math.max(pk, Math.abs(l[i]), Math.abs(r[i])); side += (l[i] - r[i]) ** 2; }
+        const n = 4 * rate;
+        rows.push([Math.min(1, sec / (T * 0.96)).toFixed(3), (10 * Math.log10(sum / n + 1e-12)).toFixed(1), (20 * Math.log10(pk + 1e-9)).toFixed(1), (10 * Math.log10(side / n + 1e-12)).toFixed(1)]);
+      }
+      return rows;
+    },
+  };
+}
+
+await Promise.all([buildAtlas(), Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1800))])]);
+await sampleGlyph('2');
+drawCounter(1);
+requestAnimationFrame((t) => { last = t; frame(t); });
+</script>
+</body>
+</html>
